@@ -12,19 +12,19 @@ from rest_framework.generics import ListAPIView
 from datetime import datetime
 from django.utils.timezone import make_aware
 from copy import deepcopy
+from django.db.models import Q
 
 from .models import User
 from .models import Company
 from .models import Coverage
 from .models import Payment
 from .models import History
+from .models import CarType
 
 # For parsing request from android app
 from .app_serializers import SignUpSerializer
 from .app_serializers import SignInSerializer
 from .app_serializers import SignVerifySerializer
-from .app_serializers import RequestVerifySerializer
-from .app_serializers import RequestPaymentSerializer
 from .app_serializers import AddCoverageSerializer
 from .app_serializers import AddClaimSerializer
 from .app_serializers import AddPaymentSerializer
@@ -37,6 +37,7 @@ import requests
 import Adyen
 import logging
 import ast
+import geopy.distance
 
 ##########################################################################   Login APIs   #######################################################################
 
@@ -51,9 +52,27 @@ class SignUpView(APIView):
             mobile = signup_serializer.data.get("mobile")
             email = signup_serializer.data.get("email")
             name = signup_serializer.data.get("name")
+            car_type_id = signup_serializer.data.get("car_type_id")
+            world_zone = signup_serializer.data.get("world_zone")
 
             if mobile == None:
                 message = "required_mobile"
+                response_data = {"success": "false", "data": {"message": message}}
+                return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+            if email == None:
+                message = "required_email"
+                response_data = {"success": "false", "data": {"message": message}}
+                return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+            if name == None:
+                message = "required_name"
+                response_data = {"success": "false", "data": {"message": message}}
+                return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+            if car_type_id == None:
+                message = "required_car_type"
+                response_data = {"success": "false", "data": {"message": message}}
+                return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+            if world_zone == None:
+                message = "required_world_zone"
                 response_data = {"success": "false", "data": {"message": message}}
                 return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
@@ -91,7 +110,13 @@ class SignUpView(APIView):
                 return Response(response_data, status = status.HTTP_204_NO_CONTENT)
             else:
                 email_object = {'email': email}
+                car_type_id_object = {'car_type_id': car_type_id}
+                world_zone_object = {'world_zone': world_zone}
+
                 jsonResponse.update(email_object)
+                jsonResponse.update(car_type_id_object)
+                jsonResponse.update(world_zone_object)
+
                 user_entry_serializer = UserEntrySerializer(data = jsonResponse)
 
                 if user_entry_serializer.is_valid():
@@ -245,13 +270,16 @@ class GetPaymentMethodsView(APIView):
     def post(self, request):
 
         access_token = request.data.get("access_token")
-        amount = request.data.get("amount")
-        currency = request.data.get("currency")
+        car_type_id = request.data.get("car_type_id")
 
         # Check if there's the mobile number alreday in DB.
         existed_user = User.objects.filter(access_token = access_token).first()
 
         if existed_user != None:
+
+            car_type = CarType.objects.filter(id = car_type_id).first()
+            amount = car_type.price_per_year
+            currency = car_type.currency
 
             # _mutable = request.data._mutable
             # request_data = request.data
@@ -262,6 +290,8 @@ class GetPaymentMethodsView(APIView):
 
             request_data = deepcopy(request.data)
             request_data['user_id'] = existed_user.id
+            request_data['amount'] = amount
+            request_data['currency'] = currency
             request_data['state'] = 1
 
             adyen = Adyen.Adyen(
@@ -398,6 +428,7 @@ class PaymentView(APIView):
 
                     history_content['id'] = payment.id
                     history_content['user_id'] = payment.user_id
+                    history_content['car_type_id'] = payment.car_type_id
                     history_content['amount'] = payment.amount
                     history_content['currency'] = payment.currency
                     history_content['state'] = payment.state
@@ -453,16 +484,30 @@ class AddCoverageView(APIView):
 
         # Get user_id from access_token
         access_token = request.data.get("access_token")
-
+        start_at = request.data.get("start_at")
+        end_at = request.data.get("end_at")
         existed_user = User.objects.filter(access_token = access_token).first()
 
         if existed_user != None:
 
             # Add user_id to the request data to save as a model field
 
+            if start_at == None:
+                start_at_datetime = start_at
+            else:
+                start_at_datetime = datetime.fromtimestamp(int(start_at))
+                start_at_datetime = start_at_datetime.strftime("%Y-%m-%d %H:%M:%S")
+
+            if end_at == None:
+                end_at_datetime = end_at
+            else:
+                end_at_datetime = datetime.fromtimestamp(int(end_at))
+                end_at_datetime = end_at_datetime.strftime("%Y-%m-%d %H:%M:%S")
+
             request_data = deepcopy(request.data)
             request_data['user_id'] = existed_user.id
-            request_data['state'] = 1
+            request_data['start_at'] = start_at_datetime
+            request_data['end_at'] = end_at_datetime
 
             add_coverage_serializer = AddCoverageSerializer(data = request_data)
             if (add_coverage_serializer.is_valid()):
@@ -486,35 +531,30 @@ class AddCoverageView(APIView):
             return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
 # Get company list
-class GetCompanyListView(APIView):
+class GetCarTypeListView(APIView):
 
     def post(self, request):
 
-        # Get user_id from access_token
-        access_token = request.data.get("access_token")
-        existed_user = User.objects.filter(access_token = access_token).first()
+        car_type_list = CarType.objects.all()
 
-        if existed_user != None:
-            company_list = Company.objects.all()
+        response_car_type_list = []
 
-            response_company_list = []
+        for car_type in car_type_list:
 
-            for company in company_list:
-                company_id = company.id
-                company_name = company.name
-                company_icon_url = company.icon_url
-                company_price_per_year = company.price_per_year
+            car_type_id = car_type.id
+            car_type_name = car_type.name
+            car_type_icon_url = car_type.icon_url
+            car_type_price_per_year = car_type.price_per_year
+            car_type_currency = car_type.currency
 
-                record = {"id": company_id, "name": company_name, "icon_url": company_icon_url, "price_per_year": company_price_per_year}
-                response_company_list.append(record)
+            record = {"id": car_type_id, "name": car_type_name, "icon_url": car_type_icon_url, "price_per_year": car_type_price_per_year, "currency": car_type_currency}
+            response_car_type_list.append(record)
 
-            response_data = {"success": "true", "data": {
-                "message": "Getting company list succeeded.",
-                "companyList": response_company_list}}
-            return Response(response_data, status=status.HTTP_200_OK)
-        else:
-            response_data = {"success": "false", "data": {"message": "The access token is invalid."}}
-            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+        response_data = {"success": "true", "data": {
+            "message": "Getting car type list succeeded.",
+            "carTypeList": response_car_type_list}}
+
+        return Response(response_data, status=status.HTTP_200_OK)
 
 # Get active coverage list
 class GetActiveCoverageView(APIView):
@@ -526,7 +566,7 @@ class GetActiveCoverageView(APIView):
         existed_user = User.objects.filter(access_token = access_token).first()
 
         if existed_user != None:
-            coverage = Coverage.objects.filter(user_id = existed_user.id).first()
+            coverage = Coverage.objects.filter(user_id = existed_user.id).exclude(state=3).first()
 
             if coverage != None:
 
@@ -551,8 +591,7 @@ class GetActiveCoverageView(APIView):
                     company_latitude = company.latitude
                     company_longitude = company.longitude
                     company_address = company.address
-                    company_icon_url = company.icon_url
-                    company_price_per_year = company.price_per_year
+                    company_type = company.type
 
                     response_company = {
                         "id": company_id,
@@ -560,8 +599,7 @@ class GetActiveCoverageView(APIView):
                         "latitude": company_latitude,
                         "longitude": company_longitude,
                         "address": company_address,
-                        "icon_url": company_icon_url,
-                        "price_per_year": company_price_per_year
+                        "type": company_type
                     }
 
                     # Change the datetime field to timestamp
@@ -682,7 +720,6 @@ class AddClaimView(APIView):
 
             request_data = deepcopy(request.data)
             request_data['user_id'] = existed_user.id
-            request_data['state'] = 1
 
             # For saving content to history table (not date_time_happenend)
             history_content = deepcopy(request_data)
@@ -741,6 +778,51 @@ class GetHistoryListView(APIView):
                 "historyList": response_history_list}}
             return Response(response_data, status=status.HTTP_200_OK)
 
+        else:
+            response_data = {"success": "false", "data": {"message": "The access token is invalid."}}
+            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
+# Get company list near user
+class GetNearCompanyListView(APIView):
+
+    def post(self, request):
+
+        # Get user_id from access_token
+        access_token = request.data.get("access_token")
+        latitude = request.data.get("latitude")
+        longitude = request.data.get("longitude")
+
+        existed_user = User.objects.filter(access_token = access_token).first()
+
+        if existed_user != None:
+
+            # User's position
+            pos_one = (latitude, longitude)
+
+            company_list = Company.objects.all()
+
+            response_company_list = []
+
+            for company in company_list:
+                company_latitude = company.latitude
+                company_longitude = company.longitude
+
+                # Company's position
+                pos_two = (company_latitude, company_longitude)
+
+                # Unit: Km
+                company_distance_from_user = geopy.distance.vincenty(pos_one, pos_two).kilometers
+                company_id = company.id
+                company_name = company.name
+                company_type = company.type
+
+                record = {"id": company_id, "name": company_name, "type": company_type, "distance": company_distance_from_user}
+                response_company_list.append(record)
+
+            response_data = {"success": "true", "data": {
+                "message": "Getting company list succeeded.",
+                "companyList": response_company_list}}
+            return Response(response_data, status=status.HTTP_200_OK)
         else:
             response_data = {"success": "false", "data": {"message": "The access token is invalid."}}
             return Response(response_data, status=status.HTTP_400_BAD_REQUEST)

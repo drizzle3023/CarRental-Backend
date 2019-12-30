@@ -10,6 +10,10 @@ class User(models.Model):
     user_id = models.CharField(max_length=200)
     mobile = models.CharField(max_length=50)
     name = models.CharField(max_length=200)
+
+    car_type_id = models.IntegerField()
+    world_zone = models.CharField(max_length=200)
+
     namespace = models.CharField(max_length=200)
     confirmation_hash = models.CharField(max_length=200)
     created_at = models.DateTimeField()
@@ -36,7 +40,7 @@ class User(models.Model):
 class Coverage(models.Model):
 
     name = models.CharField(max_length=200)
-    user_id = models.IntegerField(max_length=200)
+    user_id = models.IntegerField()
     latitude = models.FloatField()
     longitude = models.FloatField()
     address = models.CharField(max_length=200, blank=True, null = True)
@@ -52,11 +56,19 @@ class Coverage(models.Model):
 class Company(models.Model):
 
     name = models.CharField(max_length=200)
+    type = models.CharField(max_length=200, null = True)
     latitude = models.FloatField()
     longitude = models.FloatField()
     address = models.CharField(max_length=200, blank=True, null = True)
+    created_at = models.DateTimeField(auto_now_add = True)
+    updated_at = models.DateTimeField(auto_now = True)
+
+class CarType(models.Model):
+
+    name = models.CharField(max_length=200)
     icon_url = models.CharField(max_length=200, blank = True, null = True)
     price_per_year = models.FloatField(null = True)
+    currency = models.CharField(max_length = 200)
     created_at = models.DateTimeField(auto_now_add = True)
     updated_at = models.DateTimeField(auto_now = True)
 
@@ -71,7 +83,7 @@ class Claim(models.Model):
     latitude = models.FloatField(blank=True, null = True)
     longitude = models.FloatField(blank = True, null = True)
     address = models.CharField(max_length=200, blank = True, null = True)
-    damaged_part = models.IntegerField()
+    damaged_part = models.CharField(max_length=200, blank=True, null=True)
     video = models.CharField(max_length=200, blank = True, null = True)
     note = models.CharField(max_length=200, blank = True, null = True)
     state = models.IntegerField()
@@ -81,6 +93,7 @@ class Claim(models.Model):
 class Payment(models.Model):
 
     user_id = models.IntegerField()
+    car_type_id = models.IntegerField()
     amount = models.IntegerField()
     currency = models.CharField(max_length=200)
     state = models.IntegerField(null = True)

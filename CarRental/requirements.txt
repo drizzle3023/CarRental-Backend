@@ -1,0 +1,10 @@
+Django==3.0.1
+djangorestframework==3.11.0
+mysqlclient==1.4.6
+pymysql==0.9.3
+adyen==2.2.0
+certifi
+idna==2.8
+chardet==3.0.4
+requests==2.22.0
+geopy==1.20.0

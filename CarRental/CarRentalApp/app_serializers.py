@@ -9,6 +9,8 @@ class SignUpSerializer(serializers.Serializer):
     mobile = serializers.CharField(required=False)
     name = serializers.CharField(required=False)
     email = serializers.CharField(required=False)
+    car_type_id = serializers.IntegerField(required=False)
+    world_zone = serializers.CharField(required=False)
 
 class SignInSerializer(serializers.Serializer):
     mobile = serializers.CharField(required=False)
@@ -17,13 +19,13 @@ class SignVerifySerializer(serializers.Serializer):
     mobile = serializers.CharField(required=False)
     code = serializers.IntegerField(required=False)
 
-class RequestVerifySerializer(serializers.Serializer):
-    confirmation_hash = serializers.CharField(required=False)
-    code = serializers.IntegerField(required=False)
-
-class RequestPaymentSerializer(serializers.Serializer):
-    amount = serializers.IntegerField(required = False)
-    paymentMethod = serializers.JSONField(required = False)
+# class RequestVerifySerializer(serializers.Serializer):
+#     confirmation_hash = serializers.CharField(required=False)
+#     code = serializers.IntegerField(required=False)
+#
+# class RequestPaymentSerializer(serializers.Serializer):
+#     amount = serializers.IntegerField(required = False)
+#     paymentMethod = serializers.JSONField(required = False)
 
 class AddCoverageSerializer(serializers.ModelSerializer):
 
