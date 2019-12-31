@@ -40,15 +40,15 @@ class User(models.Model):
 class Coverage(models.Model):
 
     name = models.CharField(max_length=200)
-    user_id = models.IntegerField()
+    user_id = models.IntegerField(null = True, blank=True)
     latitude = models.FloatField()
     longitude = models.FloatField()
     address = models.CharField(max_length=200, blank=True, null = True)
     company_id = models.IntegerField(null = True)
-    start_at = models.DateTimeField(blank=True, null = True)
-    end_at = models.DateTimeField(blank=True, null = True)
-    video_mile = models.CharField(max_length=200, blank=True, null = True)
-    video_vehicle = models.CharField(max_length=200, blank=True, null = True)
+    starting_at = models.DateTimeField(blank=True, null = True)
+    ending_at = models.DateTimeField(blank=True, null = True)
+    video_mile = models.FileField(blank=True, null = True)
+    video_vehicle = models.FileField(blank=True, null = True)
     state = models.IntegerField(blank=True, null = True)   # COVERED: 1, UNCOVERED: 2
     created_at = models.DateTimeField(auto_now_add = True)
     updated_at = models.DateTimeField(auto_now = True)
@@ -66,7 +66,7 @@ class Company(models.Model):
 class CarType(models.Model):
 
     name = models.CharField(max_length=200)
-    icon_url = models.CharField(max_length=200, blank = True, null = True)
+    icon_url = models.FileField(null = True)
     price_per_year = models.FloatField(null = True)
     currency = models.CharField(max_length = 200)
     created_at = models.DateTimeField(auto_now_add = True)
@@ -75,16 +75,16 @@ class CarType(models.Model):
 class Claim(models.Model):
 
     name = models.CharField(max_length=200)
-    user_id = models.IntegerField()
+    user_id = models.IntegerField(blank = True, null = True)
     coverage_id = models.IntegerField()
     what_happened = models.CharField(max_length=200)
-    date_time_happened = models.DateTimeField()
+    date_time_happened = models.DateTimeField(null = True)
     time_happened = models.BigIntegerField()
     latitude = models.FloatField(blank=True, null = True)
     longitude = models.FloatField(blank = True, null = True)
     address = models.CharField(max_length=200, blank = True, null = True)
     damaged_part = models.CharField(max_length=200, blank=True, null=True)
-    video = models.CharField(max_length=200, blank = True, null = True)
+    video = models.FileField(blank = True, null = True)
     note = models.CharField(max_length=200, blank = True, null = True)
     state = models.IntegerField()
     created_at = models.DateTimeField(auto_now_add = True)
@@ -108,3 +108,8 @@ class History(models.Model):
     created_at = models.DateTimeField(auto_now_add = True)
     updated_at = models.DateTimeField(auto_now = True)
 
+class FileUploadTest(models.Model):
+
+    video_file = models.FileField(blank=False, null = False)
+    remark = models.CharField(max_length=20)
+    timestamp = models.DateTimeField(auto_now_add=True)

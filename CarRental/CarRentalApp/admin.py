@@ -24,7 +24,7 @@ class AllCompanyAdmin(admin.ModelAdmin):
 
 @admin.register(Coverage)
 class AllCoverageAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "start_at", "end_at")
+    list_display = ("id", "name", "starting_at", "ending_at")
 
 @admin.register(Claim)
 class AllClaimAdmin(admin.ModelAdmin):

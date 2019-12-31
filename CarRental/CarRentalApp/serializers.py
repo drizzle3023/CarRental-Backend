@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import User
+from .models import FileUploadTest
 
 class UserEntrySerializer(serializers.Serializer):
 
@@ -48,3 +49,10 @@ class UserEntrySerializer(serializers.Serializer):
             type = validated_data.get("type"),
             created_at = validated_data.get("created"),
             updated_at = validated_data.get("updated"))
+
+
+class FileUploadTestSerializer(serializers.ModelSerializer):
+
+    class Meta():
+        model = FileUploadTest
+        fields = ('video_file', 'remark', 'timestamp')

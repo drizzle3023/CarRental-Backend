@@ -8,8 +8,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.generics import ListAPIView
+from rest_framework.parsers import MultiPartParser, FormParser
 
-from datetime import datetime
+from datetime import datetime, time
 from django.utils.timezone import make_aware
 from copy import deepcopy
 from django.db.models import Q
@@ -20,6 +21,8 @@ from .models import Coverage
 from .models import Payment
 from .models import History
 from .models import CarType
+from .models import Claim
+from .models import FileUploadTest
 
 # For parsing request from android app
 from .app_serializers import SignUpSerializer
@@ -31,6 +34,7 @@ from .app_serializers import AddPaymentSerializer
 
 # For managing db
 from .serializers import UserEntrySerializer
+from .serializers import FileUploadTestSerializer
 
 import json
 import requests
@@ -480,12 +484,15 @@ class GetUserProfileView(APIView):
 # Add coverage
 class AddCoverageView(APIView):
 
+    parser_classes = (MultiPartParser, FormParser)
+
     def post(self, request):
 
         # Get user_id from access_token
         access_token = request.data.get("access_token")
         start_at = request.data.get("start_at")
         end_at = request.data.get("end_at")
+
         existed_user = User.objects.filter(access_token = access_token).first()
 
         if existed_user != None:
@@ -504,18 +511,39 @@ class AddCoverageView(APIView):
                 end_at_datetime = datetime.fromtimestamp(int(end_at))
                 end_at_datetime = end_at_datetime.strftime("%Y-%m-%d %H:%M:%S")
 
-            request_data = deepcopy(request.data)
-            request_data['user_id'] = existed_user.id
-            request_data['start_at'] = start_at_datetime
-            request_data['end_at'] = end_at_datetime
+            # request_data = deepcopy(request.data)
+            # request_data['user_id'] = existed_user.id
+            # request_data['start_at'] = start_at_datetime
+            # request_data['end_at'] = end_at_datetime
 
-            add_coverage_serializer = AddCoverageSerializer(data = request_data)
+            add_coverage_serializer = AddCoverageSerializer(data = request.data)
             if (add_coverage_serializer.is_valid()):
 
                 obj = add_coverage_serializer.save();
 
-                history_content = deepcopy(request_data)
-                history_content['id'] = obj.id
+                coverage = Coverage.objects.filter(id = obj.id).first()
+
+                coverage.user_id = existed_user.id
+                coverage.starting_at = start_at_datetime
+                coverage.ending_at = end_at_datetime
+
+                coverage.save()
+
+                history_content = {}
+
+                history_content['id'] = coverage.id
+                history_content['name'] = coverage.name
+                history_content['user_id'] = coverage.user_id
+                history_content['latitude'] = coverage.latitude
+                history_content['longitude'] = coverage.longitude
+                history_content['address'] = coverage.address
+                history_content['company_id'] = coverage.company_id
+                history_content['start_at'] = start_at
+                history_content['end_at'] = end_at
+                history_content['video_mile'] = str(coverage.video_mile)
+                history_content['video_vehicle'] = str(coverage.video_vehicle)
+                history_content['state'] = coverage.state
+
                 json_content = json.dumps(history_content)
 
                 history_data = History(user_id = existed_user.id, type = "Coverage", content = str(json_content))
@@ -547,7 +575,7 @@ class GetCarTypeListView(APIView):
             car_type_price_per_year = car_type.price_per_year
             car_type_currency = car_type.currency
 
-            record = {"id": car_type_id, "name": car_type_name, "icon_url": car_type_icon_url, "price_per_year": car_type_price_per_year, "currency": car_type_currency}
+            record = {"id": car_type_id, "name": car_type_name, "icon_url": str(car_type_icon_url), "price_per_year": car_type_price_per_year, "currency": car_type_currency}
             response_car_type_list.append(record)
 
         response_data = {"success": "true", "data": {
@@ -576,8 +604,8 @@ class GetActiveCoverageView(APIView):
                 coverage_longitude = coverage.longitude
                 coverage_address = coverage.address
                 coverage_company_id = coverage.company_id
-                coverage_start_at = coverage.start_at
-                coverage_end_at = coverage.end_at
+                coverage_start_at = coverage.starting_at
+                coverage_end_at = coverage.ending_at
                 coverage_video_mile = coverage.video_mile
                 coverage_video_vehicle = coverage.video_vehicle
                 coverage_state = coverage.state
@@ -623,8 +651,8 @@ class GetActiveCoverageView(APIView):
                         "company": response_company,
                         "start_at": start_at_timestamp,
                         "end_at": end_at_timestamp,
-                        "video_mile": coverage_video_mile,
-                        "video_vehicle": coverage_video_vehicle,
+                        "video_mile": str(coverage_video_mile),
+                        "video_vehicle": str(coverage_video_vehicle),
                         "state": coverage_state}
 
                     response_data = {"success": "true", "data": {
@@ -670,18 +698,18 @@ class CancelCoverage(APIView):
                 history_content['company_id'] = coverage.company_id
 
                 # Change the datetime field to timestamp
-                start_at = coverage.start_at
+                start_at = coverage.starting_at
                 if start_at != None:
                     history_content['start_at'] = start_at.timestamp()
                 else:
                     history_content['start_at'] = None
-                end_at = coverage.end_at
+                end_at = coverage.ending_at
                 if end_at != None:
                     history_content['end_at'] = end_at.timestamp()
                 else:
                     history_content['end_at'] = None
-                history_content['video_mile'] = coverage.video_mile
-                history_content['video_vehicle'] = coverage.video_vehicle
+                history_content['video_mile'] = str(coverage.video_mile)
+                history_content['video_vehicle'] = str(coverage.video_vehicle)
                 history_content['state'] = coverage.state
 
                 history_json_content = json.dumps(history_content)
@@ -702,6 +730,8 @@ class CancelCoverage(APIView):
 # Add claim
 class AddClaimView(APIView):
 
+    parser_classes = (MultiPartParser, FormParser)
+
     def post(self, request):
 
         # Get user_id from access_token
@@ -718,22 +748,37 @@ class AddClaimView(APIView):
             # request_data['user_id'] = existed_user.id
             # request_data._mutable = _mutable
 
-            request_data = deepcopy(request.data)
-            request_data['user_id'] = existed_user.id
-
             # For saving content to history table (not date_time_happenend)
-            history_content = deepcopy(request_data)
-
-            time_happenend = int(request_data.get("time_happened"))
+            time_happenend = int(request.data.get("time_happened"))
             datetime_happened = make_aware(datetime.fromtimestamp(time_happenend))
-            request_data['date_time_happened'] = datetime_happened
 
-            add_claim_serializer = AddClaimSerializer(data = request_data)
+            add_claim_serializer = AddClaimSerializer(data = request.data)
             if (add_claim_serializer.is_valid()):
 
                 obj = add_claim_serializer.save();
 
-                history_content['id'] = obj.id
+                claim = Claim.objects.filter(id = obj.id).first()
+
+                claim.user_id = existed_user.id
+                claim.date_time_happened = datetime_happened
+
+                claim.save();
+
+                history_content = {}
+
+                history_content['id'] = claim.id
+                history_content['name'] = claim.name
+                history_content['user_id'] = claim.user_id
+                history_content['latitude'] = claim.latitude
+                history_content['longitude'] = claim.longitude
+                history_content['address'] = claim.address
+                history_content['coverage_id'] = claim.coverage_id
+                history_content['time_happened'] = claim.time_happened
+                history_content['damaged_part'] = claim.damaged_part
+                history_content['video'] = str(claim.video)
+                history_content['note'] = claim.note
+                history_content['state'] = claim.state
+
                 json_content = json.dumps(history_content)
 
                 history_data = History(user_id = existed_user.id, type = "Claim", content = str(json_content))
@@ -826,3 +871,16 @@ class GetNearCompanyListView(APIView):
         else:
             response_data = {"success": "false", "data": {"message": "The access token is invalid."}}
             return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
+class FileUploadTestView(APIView):
+
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request, *args, **kwargs):
+
+        file_serializer = FileUploadTestSerializer(data=request.data)
+        if file_serializer.is_valid():
+            file_serializer.save()
+            return Response(file_serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(file_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
