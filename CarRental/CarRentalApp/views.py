@@ -13,7 +13,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from datetime import datetime, time
 from django.utils.timezone import make_aware
 from copy import deepcopy
-from django.db.models import Q
+from django.db.models import Q, Count
 
 from .models import User
 from .models import Company
@@ -62,23 +62,23 @@ class SignUpView(APIView):
             if mobile == None:
                 message = "required_mobile"
                 response_data = {"success": "false", "data": {"message": message}}
-                return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+                return Response(response_data, status=status.HTTP_200_OK)
             if email == None:
                 message = "required_email"
                 response_data = {"success": "false", "data": {"message": message}}
-                return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+                return Response(response_data, status=status.HTTP_200_OK)
             if name == None:
                 message = "required_name"
                 response_data = {"success": "false", "data": {"message": message}}
-                return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+                return Response(response_data, status=status.HTTP_200_OK)
             if car_type_id == None:
                 message = "required_car_type"
                 response_data = {"success": "false", "data": {"message": message}}
-                return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+                return Response(response_data, status=status.HTTP_200_OK)
             if world_zone == None:
                 message = "required_world_zone"
                 response_data = {"success": "false", "data": {"message": message}}
-                return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+                return Response(response_data, status=status.HTTP_200_OK)
 
             # Send request signin to the SDK server
             request_data = signup_serializer.data
@@ -93,7 +93,7 @@ class SignUpView(APIView):
                 else:
                     message = "Authentication server error"
                 response_data = {"success": "false", "data": {"message": message}}
-                return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+                return Response(response_data, status=status.HTTP_200_OK)
 
             # Check if there's the mobile number alreday in DB.
             existed_user = User.objects.filter(mobile = mobile).first()
@@ -111,7 +111,7 @@ class SignUpView(APIView):
                 # existed_user.updated_at = jsonResponse.get("updated")
                 # existed_user.save()
                 response_data = {"success": "false", "data": {"message": "Your phone number is registered already."}}
-                return Response(response_data, status = status.HTTP_204_NO_CONTENT)
+                return Response(response_data, status = status.HTTP_200_OK)
             else:
                 email_object = {'email': email}
                 car_type_id_object = {'car_type_id': car_type_id}
@@ -129,10 +129,10 @@ class SignUpView(APIView):
                     return Response(response_data, status=status.HTTP_200_OK)
                 else:
                     response_data = {"success": "false", "data": {"message": "There's a problem with saving your information."}}
-                    return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+                    return Response(response_data, status=status.HTTP_200_OK)
 
         response_data = {"success": "false", "data":{"message": "There's a problem with receiving your information."}}
-        return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+        return Response(response_data, status=status.HTTP_200_OK)
 
 # SignIn #
 class SignInView(APIView):
@@ -147,7 +147,7 @@ class SignInView(APIView):
             if mobile == None:
                 message = "required_mobile"
                 response_data = {"success": "false", "data": {"message": message}}
-                return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+                return Response(response_data, status=status.HTTP_200_OK)
 
             # Send request signin to the SDK server
             request_data = signin_serializer.data
@@ -162,7 +162,7 @@ class SignInView(APIView):
                 else:
                     message = "authentication server error"
                 response_data = {"success": "false", "data": {"message": message}}
-                return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+                return Response(response_data, status=status.HTTP_200_OK)
 
             # Check if there's the mobile number alreday in DB.
             existed_user = User.objects.filter(mobile = mobile).first()
@@ -183,10 +183,10 @@ class SignInView(APIView):
                 return Response(response_data, status = status.HTTP_200_OK)
             else:
                 response_data = {"success": "false", "data": {"message": "Your phone number isn't registered."}}
-                return Response(response_data, status=status.HTTP_204_NO_CONTENT)
+                return Response(response_data, status=status.HTTP_200_OK)
 
         response_data = {"success": "false", "data":{"message": "There's a problem with receiving your information."}}
-        return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+        return Response(response_data, status=status.HTTP_200_OK)
 
 # Sign Verify #
 class SignVerifyView(APIView):
@@ -200,12 +200,12 @@ class SignVerifyView(APIView):
             if mobile == None:
                 message = "required_mobile"
                 response_data = {"success": "false", "data": {"message": message}}
-                return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+                return Response(response_data, status=status.HTTP_200_OK)
 
             if code == None:
                 message = "required_code"
                 response_data = {"success": "false", "data": {"message": message}}
-                return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+                return Response(response_data, status=status.HTTP_200_OK)
 
             # Check if there's the mobile number alreday in DB.
             existed_user = User.objects.filter(mobile = mobile).first()
@@ -229,44 +229,46 @@ class SignVerifyView(APIView):
 
                     jsonResponse = json.loads(response.content)
                     response_data = {"success": "false", "data": {"message": jsonResponse}}
-                    return Response(response_data, status = status.HTTP_400_BAD_REQUEST)
+                    return Response(response_data, status = status.HTTP_200_OK)
                 else:
 
-                    if response.status_code == status.HTTP_204_NO_CONTENT:
-                        response_data = {"success": "false", "data": {"message": "No response from server."}}
-                        return Response(response_data, status=status.HTTP_200_OK)
+                    if response.status_code == status.HTTP_200_OK:
 
-                    jsonResponse = json.loads(response.content)
-                    # Parse endpoints, scope
-                    endpoints = jsonResponse.get("endpoints")
-                    scope = jsonResponse.get("scope")
+                        jsonResponse = json.loads(response.content)
+                        # Parse endpoints, scope
+                        endpoints = jsonResponse.get("endpoints")
+                        scope = jsonResponse.get("scope")
 
-                    existed_user.access_token = jsonResponse.get("access_token")
-                    existed_user.client_id = jsonResponse.get("client_id")
-                    existed_user.code = jsonResponse.get("code")
-                    existed_user.expires_at = jsonResponse.get("expires")
-                    existed_user.grant_type = jsonResponse.get("grant_type")
-                    existed_user.href = jsonResponse.get("href")
-                    existed_user.user_id = jsonResponse.get("id")
-                    existed_user.owner_id = jsonResponse.get("owner_id")
-                    existed_user.refresh_token = jsonResponse.get("refresh_token")
-                    existed_user.endpoints_http = endpoints.get("http")
-                    existed_user.endpoints_mqtt = endpoints.get("mqtt")
-                    existed_user.endpoints_uploader = endpoints.get("uploader")
-                    existed_user.scope_1 = scope[0]
-                    existed_user.scope_2 = scope[1]
-                    existed_user.created_at = jsonResponse.get("created")
-                    existed_user.updated_at = jsonResponse.get("updated")
+                        existed_user.access_token = jsonResponse.get("access_token")
+                        existed_user.client_id = jsonResponse.get("client_id")
+                        existed_user.code = jsonResponse.get("code")
+                        existed_user.expires_at = jsonResponse.get("expires")
+                        existed_user.grant_type = jsonResponse.get("grant_type")
+                        existed_user.href = jsonResponse.get("href")
+                        existed_user.user_id = jsonResponse.get("id")
+                        existed_user.owner_id = jsonResponse.get("owner_id")
+                        existed_user.refresh_token = jsonResponse.get("refresh_token")
+                        existed_user.endpoints_http = endpoints.get("http")
+                        existed_user.endpoints_mqtt = endpoints.get("mqtt")
+                        existed_user.endpoints_uploader = endpoints.get("uploader")
+                        existed_user.scope_1 = scope[0]
+                        existed_user.scope_2 = scope[1]
+                        existed_user.created_at = jsonResponse.get("created")
+                        existed_user.updated_at = jsonResponse.get("updated")
 
-                    existed_user.save()
+                        existed_user.save()
 
-                    response_data = {"success": "true", "data": {
-                        "message": "Sms verification succeeded.",
-                        "access_token": jsonResponse.get("access_token")}}
-                    return Response(response_data, status = status.HTTP_200_OK)
+                        response_data = {"success": "true", "data": {
+                            "message": "Sms verification succeeded.",
+                            "access_token": jsonResponse.get("access_token")}}
+                        return Response(response_data, status = status.HTTP_200_OK)
+                    else:
+                        response_data = {"success": "false", "data": {
+                            "message": "Content error from server."}}
+                        return Response(response_data, status = status.HTTP_200_OK)
             else:
                 response_data = {"success": "false", "data": {"message": "Your phone number isn't registered."}}
-                return Response(response_data, status=status.HTTP_204_NO_CONTENT)
+                return Response(response_data, status=status.HTTP_200_OK)
 
 # Get payment methods #
 class GetPaymentMethodsView(APIView):
@@ -323,13 +325,13 @@ class GetPaymentMethodsView(APIView):
                     return Response(response_data, status=status.HTTP_200_OK)
                 else:
                     response_data = {"success": "false", "data": {"message": add_payment_serializer.errors}}
-                    return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+                    return Response(response_data, status=status.HTTP_200_OK)
             else:
                 response_data = {"success": "false", "data": {"message": "Getting payment methods failed."}}
-                return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+                return Response(response_data, status=status.HTTP_200_OK)
         else:
             response_data = {"success": "false", "data": {"message": "The access token is invalid."}}
-            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+            return Response(response_data, status=status.HTTP_200_OK)
 
 # Pay #
 class PaymentView(APIView):
@@ -437,6 +439,15 @@ class PaymentView(APIView):
                     history_content['currency'] = payment.currency
                     history_content['state'] = payment.state
 
+                    payment_date = payment.date
+
+                    if payment_date is None:
+                        payment_date_timestamp = payment_date
+                    else:
+                        payment_date_timestamp = payment_date.timestamp()
+
+                    history_content['date'] = int(payment_date_timestamp)
+
                     history_json_content = json.dumps(history_content)
 
                     history_data = History(user_id = existed_user.id, type = "Payment", content = history_json_content)
@@ -446,14 +457,14 @@ class PaymentView(APIView):
                 else:
                     response_data = {"success": "false", "data": {
                         "message": "Payment failed."}}
-                    return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+                    return Response(response_data, status=status.HTTP_200_OK)
 
             else:
                 response_data = {"success": "false", "data": {"message": "The payment information doesn't exist."}}
-                return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+                return Response(response_data, status=status.HTTP_200_OK)
         else:
             response_data = {"success": "false", "data": {"message": "The access token is invalid."}}
-            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+            return Response(response_data, status=status.HTTP_200_OK)
 
 # Get user profile
 class GetUserProfileView(APIView):
@@ -479,12 +490,12 @@ class GetUserProfileView(APIView):
             return Response(response_data, status=status.HTTP_200_OK)
         else:
             response_data = {"success": "false", "data": {"message": "The access token is invalid."}}
-            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+            return Response(response_data, status=status.HTTP_200_OK)
 
 # Add coverage
 class AddCoverageView(APIView):
 
-    parser_classes = (MultiPartParser, FormParser)
+    # parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request):
 
@@ -538,11 +549,12 @@ class AddCoverageView(APIView):
                 history_content['longitude'] = coverage.longitude
                 history_content['address'] = coverage.address
                 history_content['company_id'] = coverage.company_id
-                history_content['start_at'] = start_at
-                history_content['end_at'] = end_at
+                history_content['start_at'] = int(start_at)
+                history_content['end_at'] = int(end_at)
                 history_content['video_mile'] = str(coverage.video_mile)
                 history_content['video_vehicle'] = str(coverage.video_vehicle)
                 history_content['state'] = coverage.state
+                history_content['claim_count'] = 0;
 
                 json_content = json.dumps(history_content)
 
@@ -553,10 +565,10 @@ class AddCoverageView(APIView):
                 return Response(response_data, status=status.HTTP_200_OK)
             else:
                 response_data = {"success": "false", "data": {"message": add_coverage_serializer.errors}}
-                return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+                return Response(response_data, status=status.HTTP_200_OK)
         else:
             response_data = {"success": "false", "data": {"message": "The access token is invalid."}}
-            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+            return Response(response_data, status=status.HTTP_200_OK)
 
 # Get company list
 class GetCarTypeListView(APIView):
@@ -610,6 +622,9 @@ class GetActiveCoverageView(APIView):
                 coverage_video_vehicle = coverage.video_vehicle
                 coverage_state = coverage.state
 
+                # Get count of claim for this coverage
+                claim_count = Claim.objects.filter(coverage_id = coverage_id).count()
+
                 company = Company.objects.filter(id = coverage_company_id).first()
 
                 if company != None:
@@ -649,11 +664,12 @@ class GetActiveCoverageView(APIView):
                         "longitude": coverage_longitude,
                         "address": coverage_address,
                         "company": response_company,
-                        "start_at": start_at_timestamp,
-                        "end_at": end_at_timestamp,
+                        "start_at": int(start_at_timestamp),
+                        "end_at": int(end_at_timestamp),
                         "video_mile": str(coverage_video_mile),
                         "video_vehicle": str(coverage_video_vehicle),
-                        "state": coverage_state}
+                        "state": coverage_state,
+                        "claim_count": claim_count}
 
                     response_data = {"success": "true", "data": {
                         "message": "Getting active coverage succeeded.",
@@ -662,13 +678,13 @@ class GetActiveCoverageView(APIView):
                     return Response(response_data, status=status.HTTP_200_OK)
                 else:
                     response_data = {"success": "false", "data": {"message": "The company information of the active coverage doesn't exist."}}
-                    return Response(response_data, status=status.HTTP_204_NO_CONTENT)
+                    return Response(response_data, status=status.HTTP_200_OK)
             else:
                 response_data = {"success": "false", "data": {"message": "The active coverage doesn't exist."}}
-                return Response(response_data, status=status.HTTP_204_NO_CONTENT)
+                return Response(response_data, status=status.HTTP_200_OK)
         else:
             response_data = {"success": "false", "data": {"message": "The access token is invalid."}}
-            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+            return Response(response_data, status=status.HTTP_200_OK)
 
 # Cancel coverage
 class CancelCoverage(APIView):
@@ -687,6 +703,8 @@ class CancelCoverage(APIView):
                 coverage.state = 3
                 coverage.save()
 
+                claim_count = Claim.objects.filter(coverage_id = coverage_id).count()
+
                 history_content = {}
 
                 history_content['id'] = coverage.id
@@ -700,17 +718,18 @@ class CancelCoverage(APIView):
                 # Change the datetime field to timestamp
                 start_at = coverage.starting_at
                 if start_at != None:
-                    history_content['start_at'] = start_at.timestamp()
+                    history_content['start_at'] = int(start_at.timestamp())
                 else:
                     history_content['start_at'] = None
                 end_at = coverage.ending_at
                 if end_at != None:
-                    history_content['end_at'] = end_at.timestamp()
+                    history_content['end_at'] = int(end_at.timestamp())
                 else:
                     history_content['end_at'] = None
                 history_content['video_mile'] = str(coverage.video_mile)
                 history_content['video_vehicle'] = str(coverage.video_vehicle)
                 history_content['state'] = coverage.state
+                history_content['claim_count'] = claim_count;
 
                 history_json_content = json.dumps(history_content)
 
@@ -722,15 +741,15 @@ class CancelCoverage(APIView):
                 return Response(response_data, status=status.HTTP_200_OK)
             else:
                 response_data = {"success": "false", "data": {"message": "The coverage information doesn't exist."}}
-                return Response(response_data, status=status.HTTP_204_NO_CONTENT)
+                return Response(response_data, status=status.HTTP_200_OK)
         else:
             response_data = {"success": "false", "data": {"message": "The access token is invalid."}}
-            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+            return Response(response_data, status=status.HTTP_200_OK)
 
 # Add claim
 class AddClaimView(APIView):
 
-    parser_classes = (MultiPartParser, FormParser)
+    #parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request):
 
@@ -773,7 +792,7 @@ class AddClaimView(APIView):
                 history_content['longitude'] = claim.longitude
                 history_content['address'] = claim.address
                 history_content['coverage_id'] = claim.coverage_id
-                history_content['time_happened'] = claim.time_happened
+                history_content['time_happened'] = int(claim.time_happened)
                 history_content['damaged_part'] = claim.damaged_part
                 history_content['video'] = str(claim.video)
                 history_content['note'] = claim.note
@@ -784,14 +803,60 @@ class AddClaimView(APIView):
                 history_data = History(user_id = existed_user.id, type = "Claim", content = str(json_content))
                 history_data.save()
 
-                response_data = {"success": "true", "data": {"message": "Adding coverage succeeded."}}
+                response_data = {"success": "true", "data": {"message": "Adding claim succeeded."}}
                 return Response(response_data, status=status.HTTP_200_OK)
             else:
                 response_data = {"success": "false", "data": {"message": add_claim_serializer.errors}}
-                return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+                return Response(response_data, status=status.HTTP_200_OK)
         else:
             response_data = {"success": "false", "data": {"message": "The access token is invalid."}}
-            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+            return Response(response_data, status=status.HTTP_200_OK)
+
+# Get claim list
+class GetClaimListView(APIView):
+
+    def post(self, request):
+
+        # Get user_id from access_token
+        access_token = request.data.get("access_token")
+        coverage_id = request.data.get("coverage_id")
+        existed_user = User.objects.filter(access_token = access_token).first()
+
+        if existed_user != None:
+            if coverage_id != None:
+                claim_list = Claim.objects.filter(user_id = existed_user.id).filter(coverage_id = coverage_id).all()
+
+                response_claim_list = []
+
+                for claim in claim_list:
+
+                    record = {
+                        "id" : claim.id,
+                        "name" : claim.name,
+                        "user_id" : claim.user_id,
+                        "what_happenend" : claim.what_happened,
+                        "time_happened" : claim.time_happened,
+                        "latitude" : claim.latitude,
+                        "longitude" : claim.longitude,
+                        "address" : claim.address,
+                        "damaged_part" : claim.damaged_part,
+                        "video" : str(claim.video),
+                        "note" : claim.note,
+                        "state" : claim.state
+                    }
+
+                    response_claim_list.append(record)
+
+                response_data = {"success": "true", "data": {
+                    "message": "Getting claim list succeeded.",
+                    "claimList": response_claim_list}}
+                return Response(response_data, status=status.HTTP_200_OK)
+            else:
+                response_data = {"success": "false", "data": {"message": "The coverage id is invalid."}}
+                return Response(response_data, status=status.HTTP_200_OK)
+        else:
+            response_data = {"success": "false", "data": {"message": "The access token is invalid."}}
+            return Response(response_data, status=status.HTTP_200_OK)
 
 
 # Get history list (Coverage, Claim, Payment)
@@ -825,7 +890,7 @@ class GetHistoryListView(APIView):
 
         else:
             response_data = {"success": "false", "data": {"message": "The access token is invalid."}}
-            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+            return Response(response_data, status=status.HTTP_200_OK)
 
 # Get company list near user
 class GetNearCompanyListView(APIView):
@@ -870,7 +935,7 @@ class GetNearCompanyListView(APIView):
             return Response(response_data, status=status.HTTP_200_OK)
         else:
             response_data = {"success": "false", "data": {"message": "The access token is invalid."}}
-            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+            return Response(response_data, status=status.HTTP_200_OK)
 
 class FileUploadTestView(APIView):
 
@@ -883,4 +948,4 @@ class FileUploadTestView(APIView):
             file_serializer.save()
             return Response(file_serializer.data, status=status.HTTP_201_CREATED)
         else:
-            return Response(file_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(file_serializer.errors, status=status.HTTP_200_OK)
