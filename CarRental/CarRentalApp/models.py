@@ -39,7 +39,7 @@ class User(models.Model):
 
 class Coverage(models.Model):
 
-    name = models.CharField(max_length=200)
+    name = models.CharField(max_length=200, null = True)
     user_id = models.IntegerField(null = True, blank=True)
     latitude = models.FloatField(null = True)
     longitude = models.FloatField(null = True)
@@ -79,7 +79,7 @@ class Claim(models.Model):
     coverage_id = models.IntegerField()
     what_happened = models.CharField(max_length=200)
     date_time_happened = models.DateTimeField(null = True)
-    time_happened = models.BigIntegerField()
+    time_happened = models.BigIntegerField(null = True)
     latitude = models.FloatField(blank=True, null = True)
     longitude = models.FloatField(blank = True, null = True)
     address = models.CharField(max_length=200, blank = True, null = True)
@@ -94,7 +94,7 @@ class Payment(models.Model):
 
     user_id = models.IntegerField()
     car_type_id = models.IntegerField()
-    amount = models.IntegerField()
+    amount = models.FloatField()
     currency = models.CharField(max_length=200)
     state = models.IntegerField(null = True)
     date = models.DateTimeField(auto_now_add = True)

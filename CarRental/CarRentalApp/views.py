@@ -530,38 +530,55 @@ class AddCoverageView(APIView):
             add_coverage_serializer = AddCoverageSerializer(data = request.data)
             if (add_coverage_serializer.is_valid()):
 
-                obj = add_coverage_serializer.save();
+                active_coverage = Coverage.objects.filter(user_id = existed_user.id).exclude(state = 3).first()
 
-                coverage = Coverage.objects.filter(id = obj.id).first()
+                if active_coverage != None:
 
-                coverage.user_id = existed_user.id
-                coverage.starting_at = start_at_datetime
-                coverage.ending_at = end_at_datetime
+                    active_coverage.latitude = add_coverage_serializer.data.get("latitude")
+                    active_coverage.longitude = add_coverage_serializer.data.get("longitude")
+                    active_coverage.address = add_coverage_serializer.data.get("address")
+                    active_coverage.company_id = add_coverage_serializer.data.get("company_id")
+                    active_coverage.starting_at = start_at_datetime
+                    active_coverage.ending_at = end_at_datetime
+                    active_coverage.video_mile = add_coverage_serializer.data.get("video_mile")
+                    active_coverage.video_vehicle = add_coverage_serializer.data.get("video_vehicle")
+                    active_coverage.state = add_coverage_serializer.data.get("state")
 
-                coverage.save()
+                    active_coverage.save()
+                else :
+                    obj = add_coverage_serializer.save()
+
+                    active_coverage = Coverage.objects.filter(id = obj.id).first()
+
+                    active_coverage.user_id = existed_user.id
+                    active_coverage.starting_at = start_at_datetime
+                    active_coverage.ending_at = end_at_datetime
+
+                    active_coverage.save()
 
                 history_content = {}
 
-                history_content['id'] = coverage.id
-                history_content['name'] = coverage.name
-                history_content['user_id'] = coverage.user_id
-                history_content['latitude'] = coverage.latitude
-                history_content['longitude'] = coverage.longitude
-                history_content['address'] = coverage.address
-                history_content['company_id'] = coverage.company_id
+                history_content['id'] = active_coverage.id
+                history_content['name'] = active_coverage.name
+                history_content['user_id'] = active_coverage.user_id
+                history_content['latitude'] = active_coverage.latitude
+                history_content['longitude'] = active_coverage.longitude
+                history_content['address'] = active_coverage.address
+                history_content['company_id'] = active_coverage.company_id
                 history_content['start_at'] = int(start_at)
                 history_content['end_at'] = int(end_at)
-                history_content['video_mile'] = str(coverage.video_mile)
-                history_content['video_vehicle'] = str(coverage.video_vehicle)
-                history_content['state'] = coverage.state
+                history_content['video_mile'] = str(active_coverage.video_mile)
+                history_content['video_vehicle'] = str(active_coverage.video_vehicle)
+                history_content['state'] = active_coverage.state
                 history_content['claim_count'] = 0;
 
                 json_content = json.dumps(history_content)
 
+
                 history_data = History(user_id = existed_user.id, type = "Coverage", content = str(json_content))
                 history_data.save()
 
-                response_data = {"success": "true", "data": {"message": "Adding coverage succeeded."}}
+                response_data = {"success": "true", "data": {"message": "Adding coverage succeeded.", "coverage_id": active_coverage.id}}
                 return Response(response_data, status=status.HTTP_200_OK)
             else:
                 response_data = {"success": "false", "data": {"message": add_coverage_serializer.errors}}
@@ -767,16 +784,19 @@ class AddClaimView(APIView):
             # request_data['user_id'] = existed_user.id
             # request_data._mutable = _mutable
 
-            # For saving content to history table (not date_time_happenend)
-            time_happenend = int(request.data.get("time_happened"))
-            datetime_happened = make_aware(datetime.fromtimestamp(time_happenend))
-
             add_claim_serializer = AddClaimSerializer(data = request.data)
             if (add_claim_serializer.is_valid()):
 
                 obj = add_claim_serializer.save();
 
                 claim = Claim.objects.filter(id = obj.id).first()
+
+                # For saving content to history table (not date_time_happenend)
+                if request.data.get("time_happened") != None:
+                    time_happenend = int(request.data.get("time_happened"))
+                    datetime_happened = make_aware(datetime.fromtimestamp(time_happenend))
+                else:
+                    datetime_happened = None
 
                 claim.user_id = existed_user.id
                 claim.date_time_happened = datetime_happened
@@ -792,7 +812,10 @@ class AddClaimView(APIView):
                 history_content['longitude'] = claim.longitude
                 history_content['address'] = claim.address
                 history_content['coverage_id'] = claim.coverage_id
-                history_content['time_happened'] = int(claim.time_happened)
+                if claim.time_happened != None:
+                    history_content['time_happened'] = int(claim.time_happened)
+                else:
+                    history_content['time_happened'] = None
                 history_content['damaged_part'] = claim.damaged_part
                 history_content['video'] = str(claim.video)
                 history_content['note'] = claim.note
@@ -853,6 +876,60 @@ class GetClaimListView(APIView):
                 return Response(response_data, status=status.HTTP_200_OK)
             else:
                 response_data = {"success": "false", "data": {"message": "The coverage id is invalid."}}
+                return Response(response_data, status=status.HTTP_200_OK)
+        else:
+            response_data = {"success": "false", "data": {"message": "The access token is invalid."}}
+            return Response(response_data, status=status.HTTP_200_OK)
+
+
+# Remove claim
+class RemoveClaimView(APIView):
+
+    def post(self, request):
+
+        # Get user_id from access_token
+        access_token = request.data.get("access_token")
+        claim_id = request.data.get("claim_id")
+        existed_user = User.objects.filter(access_token = access_token).first()
+
+        if existed_user != None:
+            claim = Claim.objects.filter(id = claim_id).first()
+
+            if claim != None:
+                if claim.state != 1:
+                    response_data = {"success": "false", "data": {"message": "The claim can't be removed because it's state isn't incomplete."}}
+                    return Response(response_data, status=status.HTTP_200_OK)
+
+                history_content = {}
+
+                history_content['id'] = claim.id
+                history_content['name'] = claim.name
+                history_content['user_id'] = claim.user_id
+                history_content['latitude'] = claim.latitude
+                history_content['longitude'] = claim.longitude
+                history_content['address'] = claim.address
+                history_content['coverage_id'] = claim.coverage_id
+                if claim.time_happened != None:
+                    history_content['time_happened'] = int(claim.time_happened)
+                else:
+                    history_content['time_happened'] = None
+                history_content['damaged_part'] = claim.damaged_part
+                history_content['video'] = str(claim.video)
+                history_content['note'] = claim.note
+                history_content['state'] = claim.state
+
+                history_json_content = json.dumps(history_content)
+
+                history_data = History(user_id = existed_user.id, type = "Claim", content = history_json_content)
+                history_data.save()
+
+                claim.delete()
+
+                response_data = {"success": "true", "data": {
+                    "message": "The claim was removed successfully."}}
+                return Response(response_data, status=status.HTTP_200_OK)
+            else:
+                response_data = {"success": "false", "data": {"message": "The claim data doesn't exist."}}
                 return Response(response_data, status=status.HTTP_200_OK)
         else:
             response_data = {"success": "false", "data": {"message": "The access token is invalid."}}
