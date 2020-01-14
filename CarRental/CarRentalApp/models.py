@@ -36,6 +36,7 @@ class User(models.Model):
     refresh_token = models.CharField(max_length=200, null = True)
     scope_1 = models.CharField(max_length=200, null = True)
     scope_2 = models.CharField(max_length=200, null = True)
+    pay_state = models.IntegerField(null = True, blank=True)
 
 class Coverage(models.Model):
 
@@ -49,6 +50,8 @@ class Coverage(models.Model):
     ending_at = models.DateTimeField(blank=True, null = True)
     video_mile = models.FileField(blank=True, null = True)
     video_vehicle = models.FileField(blank=True, null = True)
+    image_mile = models.FileField(blank=True, null = True)
+    image_vehicle = models.FileField(blank=True, null = True)
     state = models.IntegerField(blank=True, null = True)   # COVERED: 1, UNCOVERED: 2
     created_at = models.DateTimeField(auto_now_add = True)
     updated_at = models.DateTimeField(auto_now = True)
@@ -85,6 +88,7 @@ class Claim(models.Model):
     address = models.CharField(max_length=200, blank = True, null = True)
     damaged_part = models.CharField(max_length=200, blank=True, null=True)
     video = models.FileField(blank = True, null = True)
+    image = models.FileField(blank = True, null = True)
     note = models.CharField(max_length=200, blank = True, null = True)
     state = models.IntegerField()
     created_at = models.DateTimeField(auto_now_add = True)

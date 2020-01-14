@@ -15,7 +15,8 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from django.conf.urls import include, url
+from django.conf.urls.static import static
+from django.conf import settings
 
 import CarRentalApp.views as car_rental_app
 
@@ -38,5 +39,9 @@ urlpatterns = [
     path('api/get-claim-list', car_rental_app.GetClaimListView.as_view()),
     path('api/get-history-list', car_rental_app.GetHistoryListView.as_view()),
     path('api/get-near-company-list', car_rental_app.GetNearCompanyListView.as_view()),
-    path('api/upload', car_rental_app.FileUploadTestView.as_view())
+    path('api/upload', car_rental_app.FileUploadTestView.as_view()),
+
 ]
+
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
