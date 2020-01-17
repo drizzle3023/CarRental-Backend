@@ -1,10 +1,3 @@
-from django.shortcuts import render, get_object_or_404
-from django.http import HttpResponse, HttpResponseRedirect
-from django.urls import reverse
-from django.http import QueryDict
-from django.core import serializers
-from django.db.models import Q
-
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -14,10 +7,6 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from django.utils.timezone import make_aware
 from copy import deepcopy
 from django.db.models import Q, Count
-
-from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
-from django.conf import settings
 
 from .models import User
 from .models import Company
@@ -160,11 +149,22 @@ class SignInView(APIView):
                 response_data = {"success": "false", "data": {"message": message}}
                 return Response(response_data, status=status.HTTP_200_OK)
 
+            user = User.objects.filter(mobile = mobile).first()
+
+            if user == None:
+                response_data = {"success": "false", "data": {"message": "The mobile isn't registered."}}
+                return Response(response_data, status=status.HTTP_200_OK)
+
             # Send request signin to the SDK server
             request_data = signin_serializer.data
             # Global Constants -> this url. ??
             response = requests.post('https://api.platform.integrations.muzzley.com/v3/applications/6eb9d03d-33da-4bcc-9722-611bb9c9fec2/user-sms-entry', data = request_data)
-            jsonResponse = json.loads(response.content)
+            try:
+                jsonResponse = json.loads(response.content)
+            except:
+                message = "authentication server error"
+                response_data = {"success": "false", "data": {"message": message}}
+                return Response(response_data, status=status.HTTP_200_OK)
 
             # Check if jsonResponse has success value.
             if status.is_success(response.status_code) == False:
@@ -413,6 +413,21 @@ class GetPaymentMethodsView(APIView):
                 if userInfo != None:
 
                     car_type = CarType.objects.filter(id = car_type_id).first()
+
+                    if car_type == None:
+
+                        if resultCheckingResult.get("refresh_user") != None:
+                            response_data = {"success": "false",
+                                             "data": {"message": "The car type doesn't exist.",
+                                                      "refresh_user": resultCheckingResult.get("refresh_user"),
+                                                      "token_state": "valid"}}
+                            return Response(response_data, status=status.HTTP_200_OK)
+                        else:
+                            response_data = {"success": "false",
+                                             "data": {"message": "The car type doesn't exist.",
+                                                      "token_state": "valid"}}
+                            return Response(response_data, status=status.HTTP_200_OK)
+
                     amount = car_type.price_per_year
                     currency = car_type.currency
 
@@ -792,8 +807,8 @@ class AddCoverageView(APIView):
                         imageVehicle = files['image-vehicle']
                     except:
                         imageVehicle = None
-                    # Add user_id to the request data to save as a model field
 
+                    # Add user_id to the request data to save as a model field
                     if start_at == None:
                         start_at_datetime = start_at
                     else:
@@ -988,7 +1003,7 @@ class GetActiveCoverageView(APIView):
 
                     pay_state = userInfo.pay_state
 
-                    coverage = Coverage.objects.filter(user_id = userInfo.id).filter(state__lte=2).first()
+                    coverage = Coverage.objects.filter(user_id = userInfo.id).exclude(state=3).order_by('-updated_at').first()
 
                     if coverage != None:
 
@@ -1023,30 +1038,32 @@ class GetActiveCoverageView(APIView):
 
                         current_datetime = datetime.datetime.now()
 
-                        if (current_datetime.timestamp() > coverage_end_at.timestamp()):
-                            coverage.state = 4
-                            coverage.save()
+                        if coverage.state != 1 and coverage.state != 4:
+                            if end_at_timestamp != None:
+                                if current_datetime.timestamp() >= (coverage_end_at.timestamp() + 24 * 60 * 60):
+                                    coverage.state = 4
+                                    coverage.save()
 
-                            history_content = {}
+                                    history_content = {}
 
-                            history_content['id'] = coverage.id
-                            history_content['name'] = coverage.name
-                            history_content['user_id'] = coverage.user_id
-                            history_content['latitude'] = coverage.latitude
-                            history_content['longitude'] = coverage.longitude
-                            history_content['address'] = coverage.address
-                            history_content['company_id'] = coverage.company_id
-                            history_content['start_at'] = int(start_at_timestamp)
-                            history_content['end_at'] = int(end_at_timestamp)
-                            history_content['video_mile'] = str(coverage.video_mile)
-                            history_content['video_vehicle'] = str(coverage.video_vehicle)
-                            history_content['state'] = coverage.state
-                            history_content['claim_count'] = claim_count;
+                                    history_content['id'] = coverage.id
+                                    history_content['name'] = coverage.name
+                                    history_content['user_id'] = coverage.user_id
+                                    history_content['latitude'] = coverage.latitude
+                                    history_content['longitude'] = coverage.longitude
+                                    history_content['address'] = coverage.address
+                                    history_content['company_id'] = coverage.company_id
+                                    history_content['start_at'] = int(start_at_timestamp)
+                                    history_content['end_at'] = int(end_at_timestamp)
+                                    history_content['video_mile'] = str(coverage.video_mile)
+                                    history_content['video_vehicle'] = str(coverage.video_vehicle)
+                                    history_content['state'] = coverage.state
+                                    history_content['claim_count'] = claim_count;
 
-                            json_content = json.dumps(history_content)
+                                    json_content = json.dumps(history_content)
 
-                            history_data = History(user_id=userInfo.id, type="Coverage", content=str(json_content))
-                            history_data.save()
+                                    history_data = History(user_id=userInfo.id, type="Coverage", content=str(json_content))
+                                    history_data.save()
 
                         coverage_state = coverage.state
 
