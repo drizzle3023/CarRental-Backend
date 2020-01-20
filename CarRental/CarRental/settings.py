@@ -25,7 +25,7 @@ SECRET_KEY = 'yeth62w)5%jyqg5r^6vfmpmz=!$!1*=xrhkgk0w)h9p1h8==zz'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '10.3.0.4', '192.168.1.11', '192.168.1.13', '52.148.234.75', 'sandbox-zone02.netherlands.region.habit.io']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '10.3.0.4', '192.168.1.11', '192.168.1.13', '192.168.1.160', '52.148.234.75', 'sandbox-zone02.netherlands.region.habit.io']
 
 # Application definition
 

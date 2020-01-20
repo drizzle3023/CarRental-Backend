@@ -76,6 +76,12 @@ class SignUpView(APIView):
                 response_data = {"success": "false", "data": {"message": message}}
                 return Response(response_data, status=status.HTTP_200_OK)
 
+            # Check if there's the mobile number alreday in DB.
+            existed_user = User.objects.filter(mobile = mobile).first()
+            if existed_user != None:
+                response_data = {"success": "false", "data": {"message": "The mobile is already registered."}}
+                return Response(response_data, status=status.HTTP_200_OK)
+
             # Send request signin to the SDK server
             request_data = signup_serializer.data
             # Global Constants -> this url. ??
@@ -90,9 +96,6 @@ class SignUpView(APIView):
                     message = "Authentication server error"
                 response_data = {"success": "false", "data": {"message": message}}
                 return Response(response_data, status=status.HTTP_200_OK)
-
-            # Check if there's the mobile number alreday in DB.
-            existed_user = User.objects.filter(mobile = mobile).first()
 
             if existed_user != None:
                 existed_user.user_id = jsonResponse.get("id")
@@ -302,7 +305,7 @@ def checkAccessToken(access_token):
                 host = existed_user.endpoints_http
                 refresh_token = existed_user.refresh_token
                 url = host + '/v3/auth/exchange?client_id=6eb9d03d-33da-4bcc-9722-611bb9c9fec2&refresh_token=' + refresh_token + '&grant_type=password'
-                response = requests.get(url)
+                response = requests.get(url, timeout = 10)
                 jsonResponse = json.loads(response.content)
 
                 if status.is_success(response.status_code) == False:
@@ -725,6 +728,16 @@ class GetUserProfileView(APIView):
 
                 if userInfo != None:
 
+                    carTypeInfo = CarType.objects.filter(id = userInfo.car_type_id).first()
+
+                    response_carType = {
+                        "id": carTypeInfo.id,
+                        "name": carTypeInfo.name,
+                        "icon_url": str(carTypeInfo.icon_url),
+                        "price_per_year": carTypeInfo.price_per_year,
+                        "currency": carTypeInfo.currency
+                    }
+
                     if resultCheckingResult.get("refresh_user") != None:
                         response_data = {"success": "true",
                                          "data": {
@@ -733,7 +746,9 @@ class GetUserProfileView(APIView):
                                                 "id": userInfo.id,
                                                 "email": userInfo.email,
                                                 "name": userInfo.name,
-                                                "mobile": userInfo.mobile
+                                                "mobile": userInfo.mobile,
+                                                "car_type": response_carType,
+                                                "world_zone": userInfo.world_zone
                                             },
                                             "token_state": "valid",
                                             "refresh_user": resultCheckingResult.get("refresh_user")}}
@@ -745,7 +760,9 @@ class GetUserProfileView(APIView):
                                                 "id": userInfo.id,
                                                 "email": userInfo.email,
                                                 "name": userInfo.name,
-                                                "mobile": userInfo.mobile
+                                                "mobile": userInfo.mobile,
+                                                "car_type": response_carType,
+                                                "world_zone": userInfo.world_zone
                                             },
                                             "token_state": "valid"}}
                     return Response(response_data, status=status.HTTP_200_OK)
@@ -916,6 +933,8 @@ class AddCoverageView(APIView):
                             history_content['end_at'] = None
                         history_content['video_mile'] = str(active_coverage.video_mile)
                         history_content['video_vehicle'] = str(active_coverage.video_vehicle)
+                        history_content['image_mile'] = str(active_coverage.image_mile)
+                        history_content['image_vehicle'] = str(active_coverage.image_vehicle)
                         history_content['state'] = active_coverage.state
                         history_content['claim_count'] = 0;
 
@@ -1057,6 +1076,8 @@ class GetActiveCoverageView(APIView):
                                     history_content['end_at'] = int(end_at_timestamp)
                                     history_content['video_mile'] = str(coverage.video_mile)
                                     history_content['video_vehicle'] = str(coverage.video_vehicle)
+                                    history_content['image_mile'] = str(coverage.image_mile)
+                                    history_content['image_vehicle'] = str(coverage.image_vehicle)
                                     history_content['state'] = coverage.state
                                     history_content['claim_count'] = claim_count;
 
@@ -1123,10 +1144,12 @@ class GetActiveCoverageView(APIView):
                                 response_data = {"success": "false", "data": {
                                     "message": "The company information of the active coverage doesn't exist.",
                                     "token_state": "valid",
+                                    "pay_state": pay_state,
                                     "refresh_user": resultCheckingResult.get("refresh_user")}}
                             else:
                                 response_data = {"success": "false", "data": {
                                     "message": "The company information of the active coverage doesn't exist.",
+                                    "pay_state": pay_state,
                                     "token_state": "valid"}}
 
                             return Response(response_data, status=status.HTTP_200_OK)
@@ -1134,11 +1157,13 @@ class GetActiveCoverageView(APIView):
                         if resultCheckingResult.get("refresh_user") != None:
                             response_data = {"success": "false", "data": {
                                 "message": "The active coverage doesn't exist.",
+                                "pay_state": pay_state,
                                 "token_state": "valid",
                                 "refresh_user": resultCheckingResult.get("refresh_user")}}
                         else:
                             response_data = {"success": "false", "data": {
                                 "message": "The active coverage doesn't exist.",
+                                "pay_state": pay_state,
                                 "token_state": "valid"}}
                         return Response(response_data, status=status.HTTP_200_OK)
 
@@ -1205,6 +1230,8 @@ class CancelCoverage(APIView):
                             history_content['end_at'] = None
                         history_content['video_mile'] = str(coverage.video_mile)
                         history_content['video_vehicle'] = str(coverage.video_vehicle)
+                        history_content['image_mile'] = str(coverage.image_mile)
+                        history_content['image_vehicle'] = str(coverage.image_vehicle)
                         history_content['state'] = coverage.state
                         history_content['claim_count'] = claim_count;
 
@@ -1352,6 +1379,7 @@ class AddClaimView(APIView):
                             history_content['time_happened'] = None
                         history_content['damaged_part'] = claim.damaged_part
                         history_content['video'] = str(claim.video)
+                        history_content['image'] = str(claim.image)
                         history_content['note'] = claim.note
                         history_content['state'] = claim.state
 
@@ -1385,6 +1413,8 @@ class AddClaimView(APIView):
                             history_content['end_at'] = None
                         history_content['video_mile'] = str(coverage.video_mile)
                         history_content['video_vehicle'] = str(coverage.video_vehicle)
+                        history_content['image_mile'] = str(coverage.image_mile)
+                        history_content['image_vehicle'] = str(coverage.image_vehicle)
                         history_content['state'] = coverage.state
                         history_content['claim_count'] = claim_count;
 
@@ -1441,7 +1471,7 @@ class GetClaimListView(APIView):
 
                 if userInfo != None:
                     if coverage_id != None:
-                        claim_list = Claim.objects.filter(user_id = userInfo.id).filter(coverage_id = coverage_id).all()
+                        claim_list = Claim.objects.filter(user_id = userInfo.id).filter(coverage_id = coverage_id).order_by('-updated_at').all()
 
                         response_claim_list = []
 
@@ -1540,6 +1570,7 @@ class RemoveClaimView(APIView):
                             history_content['time_happened'] = None
                         history_content['damaged_part'] = claim.damaged_part
                         history_content['video'] = str(claim.video)
+                        history_content['image'] = str(claim.image)
                         history_content['note'] = claim.note
                         history_content['state'] = claim.state  # Set cancel state
 
@@ -1573,6 +1604,8 @@ class RemoveClaimView(APIView):
                             history_content['end_at'] = None
                         history_content['video_mile'] = str(coverage.video_mile)
                         history_content['video_vehicle'] = str(coverage.video_vehicle)
+                        history_content['image_mile'] = str(coverage.image_mile)
+                        history_content['image_vehicle'] = str(coverage.image_vehicle)
                         history_content['state'] = coverage.state
                         history_content['claim_count'] = (claim_count - 1);
 
@@ -1630,7 +1663,7 @@ class GetHistoryListView(APIView):
 
                 if userInfo != None:
 
-                    history_list = History.objects.filter(user_id = userInfo.id).all()
+                    history_list = History.objects.filter(user_id = userInfo.id).order_by('-updated_at').all()
 
                     response_history_list = []
 
