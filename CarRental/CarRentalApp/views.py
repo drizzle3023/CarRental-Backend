@@ -271,10 +271,30 @@ class SignVerifyView(APIView):
 
                         existed_user.save()
 
+                        carTypeInfo = CarType.objects.filter(id=existed_user.car_type_id).first()
+
+                        response_carType = {
+                            "id": carTypeInfo.id,
+                            "name": carTypeInfo.name,
+                            "icon_url": str(carTypeInfo.icon_url),
+                            "price_per_year": carTypeInfo.price_per_year,
+                            "currency": carTypeInfo.currency
+                        }
+
+                        response_userProfile = {
+                            "id": existed_user.id,
+                            "email": existed_user.email,
+                            "name": existed_user.name,
+                            "mobile": existed_user.mobile,
+                            "car_type": response_carType,
+                            "world_zone": existed_user.world_zone
+                        }
+
                         response_data = {"success": "true", "data": {
                             "message": "Sms verification succeeded.",
                             "access_token": jsonResponse.get("access_token"),
-                            "user": jsonResponse}}
+                            "user": jsonResponse,
+                            "user_profile": response_userProfile}}
                         return Response(response_data, status = status.HTTP_200_OK)
                     else:
                         response_data = {"success": "false", "data": {
