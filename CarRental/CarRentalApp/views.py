@@ -38,6 +38,10 @@ import geopy.distance
 import pytz
 import datetime
 import os
+from urllib.parse import unquote
+
+from .constants import url_authentication_server
+from .constants import application_id
 
 ##########################################################################   Login APIs   #######################################################################
 
@@ -67,14 +71,14 @@ class SignUpView(APIView):
                 message = "required_name"
                 response_data = {"success": "false", "data": {"message": message}}
                 return Response(response_data, status=status.HTTP_200_OK)
-            if car_type_id == None:
-                message = "required_car_type"
-                response_data = {"success": "false", "data": {"message": message}}
-                return Response(response_data, status=status.HTTP_200_OK)
-            if world_zone == None:
-                message = "required_world_zone"
-                response_data = {"success": "false", "data": {"message": message}}
-                return Response(response_data, status=status.HTTP_200_OK)
+            # if car_type_id == None:
+            #     message = "required_car_type"
+            #     response_data = {"success": "false", "data": {"message": message}}
+            #     return Response(response_data, status=status.HTTP_200_OK)
+            # if world_zone == None:
+            #     message = "required_world_zone"
+            #     response_data = {"success": "false", "data": {"message": message}}
+            #     return Response(response_data, status=status.HTTP_200_OK)
 
             # Check if there's the mobile number alreday in DB.
             existed_user = User.objects.filter(mobile = mobile).first()
@@ -84,8 +88,10 @@ class SignUpView(APIView):
 
             # Send request signin to the SDK server
             request_data = signup_serializer.data
-            # Global Constants -> this url. ??
-            response = requests.post('https://api.platform.integrations.muzzley.com/v3/applications/6eb9d03d-33da-4bcc-9722-611bb9c9fec2/user-sms-entry', data = request_data)
+            # Global Constants -> this url. ?? https://api.platform.integrations.muzzley.com/
+            # Application ID -> 6eb9d03d-33da-4bcc-9722-611bb9c9fec2
+            url_to_send = url_authentication_server + '/v3/applications/' + application_id + '/user-sms-entry'
+            response = requests.post(url_to_send, data = request_data)
             jsonResponse = json.loads(response.content)
 
             # Check if jsonResponse has success value.
@@ -161,7 +167,8 @@ class SignInView(APIView):
             # Send request signin to the SDK server
             request_data = signin_serializer.data
             # Global Constants -> this url. ??
-            response = requests.post('https://api.platform.integrations.muzzley.com/v3/applications/6eb9d03d-33da-4bcc-9722-611bb9c9fec2/user-sms-entry', data = request_data)
+            url_to_send = url_authentication_server + '/v3/applications/' + application_id + '/user-sms-entry'
+            response = requests.post(url_to_send, data = request_data)
             try:
                 jsonResponse = json.loads(response.content)
             except:
@@ -233,16 +240,14 @@ class SignVerifyView(APIView):
                 # request_verify_serializer.confirmation_hash = confirmation_hash
                 # request_verify_serializer.code = code
 
-                url = 'https://api.platform.integrations.muzzley.com/v3/users/' + user_id + '/sms-verify'
+                url_to_send = url_authentication_server + '/v3/users/' + user_id + '/sms-verify'
 
-                response = requests.post(
-                    'https://api.platform.integrations.muzzley.com/v3/users/' + user_id + '/sms-verify',
-                    data = json.dumps(request_data), headers = headers)
+                response = requests.post(url_to_send, data = json.dumps(request_data), headers = headers)
 
                 if status.is_success(response.status_code) == False:
 
                     jsonResponse = json.loads(response.content)
-                    response_data = {"success": "false", "data": {"message": jsonResponse}}
+                    response_data = {"success": "false", "data": {"message": "Verification failed."}}
                     return Response(response_data, status = status.HTTP_200_OK)
                 else:
 
@@ -890,13 +895,13 @@ class AddCoverageView(APIView):
                         if active_coverage != None:
 
                             if request.data.get("name") != None:
-                                active_coverage.name = request.data.get("name")
+                                active_coverage.name = unquote(request.data.get("name"))
                             if request.data.get("latitude") != None:
                                 active_coverage.latitude = request.data.get("latitude")
                             if request.data.get("longitude") != None:
                                 active_coverage.longitude = request.data.get("longitude")
                             if request.data.get("address") != None:
-                                active_coverage.address = request.data.get("address")
+                                active_coverage.address = unquote(request.data.get("address"))
                             if request.data.get("company_id") != None:
                                 active_coverage.company_id = request.data.get("company_id")
                             if request.data.get("start_at") != None:
@@ -931,6 +936,11 @@ class AddCoverageView(APIView):
                             active_coverage.user_id = userInfo.id
                             active_coverage.starting_at = start_at_datetime
                             active_coverage.ending_at = end_at_datetime
+
+                            if request.data.get("name") != None:
+                                active_coverage.name = unquote(request.data.get("name"))
+                            if request.data.get("address") != None:
+                                active_coverage.address = unquote(request.data.get("address"))
 
                             active_coverage.save()
 
@@ -1108,6 +1118,11 @@ class GetActiveCoverageView(APIView):
 
                         coverage_state = coverage.state
 
+                        if coverage_state == None or coverage_state == 1 or coverage_state == 2:
+                            time_left = (coverage_end_at.timestamp() + 24 * 60 * 60 - 1) - current_datetime.timestamp()
+                        else:
+                            time_left = 0;
+
                         company = Company.objects.filter(id = coverage_company_id).first()
 
                         if company != None:
@@ -1127,52 +1142,42 @@ class GetActiveCoverageView(APIView):
                                 "address": company_address,
                                 "type": company_type
                             }
-
-                            response_coverage = {
-                                "id": coverage_id,
-                                "name": coverage_name,
-                                "latitude": coverage_latitude,
-                                "longitude": coverage_longitude,
-                                "address": coverage_address,
-                                "company": response_company,
-                                "start_at": int(start_at_timestamp),
-                                "end_at": int(end_at_timestamp),
-                                "video_mile": str(coverage_video_mile),
-                                "video_vehicle": str(coverage_video_vehicle),
-                                "image_mile": str(coverage_image_mile),
-                                "image_vehicle": str(coverage_image_vehicle),
-                                "state": coverage_state,
-                                "claim_count": claim_count}
-
-                            if resultCheckingResult.get("refresh_user") != None:
-                                response_data = {"success": "true", "data": {
-                                    "message": "Getting active coverage succeeded.",
-                                    "coverage": response_coverage,
-                                    "pay_state": pay_state,
-                                    "refresh_user": resultCheckingResult.get("refresh_user"),
-                                    "token_state": "valid"}}
-                            else:
-                                response_data = {"success": "true", "data": {
-                                    "message": "Getting active coverage succeeded.",
-                                    "coverage": response_coverage,
-                                    "pay_state": pay_state,
-                                    "token_state": "valid"}}
-
-                            return Response(response_data, status=status.HTTP_200_OK)
                         else:
-                            if resultCheckingResult.get("refresh_user") != None:
-                                response_data = {"success": "false", "data": {
-                                    "message": "The company information of the active coverage doesn't exist.",
-                                    "token_state": "valid",
-                                    "pay_state": pay_state,
-                                    "refresh_user": resultCheckingResult.get("refresh_user")}}
-                            else:
-                                response_data = {"success": "false", "data": {
-                                    "message": "The company information of the active coverage doesn't exist.",
-                                    "pay_state": pay_state,
-                                    "token_state": "valid"}}
+                            response_company = None
 
-                            return Response(response_data, status=status.HTTP_200_OK)
+                        response_coverage = {
+                            "id": coverage_id,
+                            "name": coverage_name,
+                            "latitude": coverage_latitude,
+                            "longitude": coverage_longitude,
+                            "address": coverage_address,
+                            "company": response_company,
+                            "start_at": int(start_at_timestamp),
+                            "end_at": int(end_at_timestamp),
+                            "video_mile": str(coverage_video_mile),
+                            "video_vehicle": str(coverage_video_vehicle),
+                            "image_mile": str(coverage_image_mile),
+                            "image_vehicle": str(coverage_image_vehicle),
+                            "state": coverage_state,
+                            "time_left": int(time_left),
+                            "claim_count": claim_count}
+
+                        if resultCheckingResult.get("refresh_user") != None:
+                            response_data = {"success": "true", "data": {
+                                "message": "Getting active coverage succeeded.",
+                                "coverage": response_coverage,
+                                "pay_state": pay_state,
+                                "refresh_user": resultCheckingResult.get("refresh_user"),
+                                "token_state": "valid"}}
+                        else:
+                            response_data = {"success": "true", "data": {
+                                "message": "Getting active coverage succeeded.",
+                                "coverage": response_coverage,
+                                "pay_state": pay_state,
+                                "token_state": "valid"}}
+
+                        return Response(response_data, status=status.HTTP_200_OK)
+
                     else:
                         if resultCheckingResult.get("refresh_user") != None:
                             response_data = {"success": "false", "data": {
@@ -1344,11 +1349,11 @@ class AddClaimView(APIView):
                             if request.data.get("longitude") != None:
                                 claim.longitude = request.data.get("longitude")
                             if request.data.get("address") != None:
-                                claim.address = request.data.get("address")
+                                claim.address = unquote(request.data.get("address"))
                             if request.data.get("coverage_id") != None:
                                 claim.coverage_id = request.data.get("coverage_id")
                             if request.data.get("what_happened") != None:
-                                claim.what_happened = request.data.get("what_happened")
+                                claim.what_happened = unquote(request.data.get("what_happened"))
                             if request.data.get("time_happened") != None:
                                 claim.time_happened = request.data.get("time_happened")
                             if request.data.get("damaged_part") != None:
@@ -1362,7 +1367,7 @@ class AddClaimView(APIView):
                             elif request.data.get("image") != None:
                                 claim.image = request.data.get("image")
                             if request.data.get("note") != None:
-                                claim.note = request.data.get("note")
+                                claim.note = unquote(request.data.get("note"))
                             if request.data.get("state") != None:
                                 claim.state = request.data.get("state")
 
@@ -1381,6 +1386,13 @@ class AddClaimView(APIView):
 
                         claim.user_id = userInfo.id
                         claim.date_time_happened = datetime_happened
+
+                        if request.data.get("address") != None:
+                            claim.address = unquote(request.data.get("address"))
+                        if request.data.get("what_happened") != None:
+                            claim.what_happened = unquote(request.data.get("what_happened"))
+                        if request.data.get("note") != None:
+                            claim.note = unquote(request.data.get("note"))
 
                         claim.save();
 
