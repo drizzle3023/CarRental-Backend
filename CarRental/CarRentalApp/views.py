@@ -758,13 +758,16 @@ class GetUserProfileView(APIView):
 
                     carTypeInfo = CarType.objects.filter(id = userInfo.car_type_id).first()
 
-                    response_carType = {
-                        "id": carTypeInfo.id,
-                        "name": carTypeInfo.name,
-                        "icon_url": str(carTypeInfo.icon_url),
-                        "price_per_year": carTypeInfo.price_per_year,
-                        "currency": carTypeInfo.currency
-                    }
+                    if carTypeInfo != None:
+                        response_carType = {
+                            "id": carTypeInfo.id,
+                            "name": carTypeInfo.name,
+                            "icon_url": str(carTypeInfo.icon_url),
+                            "price_per_year": carTypeInfo.price_per_year,
+                            "currency": carTypeInfo.currency
+                        }
+                    else:
+                        response_carType = None
 
                     if resultCheckingResult.get("refresh_user") != None:
                         response_data = {"success": "true",
