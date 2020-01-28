@@ -9,8 +9,8 @@ class UserEntrySerializer(serializers.Serializer):
     mobile = serializers.CharField(max_length=50)
     name = serializers.CharField(max_length=200)
 
-    car_type_id = serializers.IntegerField()
-    world_zone = serializers.CharField(max_length=200)
+    car_type_id = serializers.IntegerField(required=False, allow_null=True)
+    world_zone = serializers.CharField(max_length=200, allow_blank=True, allow_null=True)
 
     namespace = serializers.CharField(max_length=200)
     confirmation_hash = serializers.CharField(max_length=200)

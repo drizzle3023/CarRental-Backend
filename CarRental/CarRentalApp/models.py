@@ -12,7 +12,7 @@ class User(models.Model):
     name = models.CharField(max_length=200, null = True)
 
     car_type_id = models.IntegerField(null = True)
-    world_zone = models.CharField(max_length=200, null = True)
+    world_zone = models.CharField(max_length=200, null = True, blank=True)
 
     namespace = models.CharField(max_length=200, null = True)
     confirmation_hash = models.CharField(max_length=200, null = True)

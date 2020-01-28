@@ -278,13 +278,16 @@ class SignVerifyView(APIView):
 
                         carTypeInfo = CarType.objects.filter(id=existed_user.car_type_id).first()
 
-                        response_carType = {
-                            "id": carTypeInfo.id,
-                            "name": carTypeInfo.name,
-                            "icon_url": str(carTypeInfo.icon_url),
-                            "price_per_year": carTypeInfo.price_per_year,
-                            "currency": carTypeInfo.currency
-                        }
+                        if carTypeInfo != None:
+                            response_carType = {
+                                "id": carTypeInfo.id,
+                                "name": carTypeInfo.name,
+                                "icon_url": str(carTypeInfo.icon_url),
+                                "price_per_year": carTypeInfo.price_per_year,
+                                "currency": carTypeInfo.currency
+                            }
+                        else:
+                            response_carType = None
 
                         response_userProfile = {
                             "id": existed_user.id,
