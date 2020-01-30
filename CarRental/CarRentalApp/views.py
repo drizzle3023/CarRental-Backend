@@ -871,13 +871,13 @@ class AddCoverageView(APIView):
                     if start_at == None:
                         start_at_datetime = start_at
                     else:
-                        start_at_datetime = datetime.datetime.fromtimestamp(int(start_at))
+                        start_at_datetime = datetime.datetime.utcfromtimestamp(int(start_at))
                         start_at_datetime = start_at_datetime.strftime("%Y-%m-%d %H:%M:%S")
 
                     if end_at == None:
                         end_at_datetime = end_at
                     else:
-                        end_at_datetime = datetime.datetime.fromtimestamp(int(end_at))
+                        end_at_datetime = datetime.datetime.utcfromtimestamp(int(end_at))
                         end_at_datetime = end_at_datetime.strftime("%Y-%m-%d %H:%M:%S")
 
                     # request_data = deepcopy(request.data)
@@ -1106,7 +1106,7 @@ class GetActiveCoverageView(APIView):
 
                         if coverage.state != 1 and coverage.state != 4:
                             if end_at_timestamp != None:
-                                if current_datetime.timestamp() >= (coverage_end_at.timestamp() + 24 * 60 * 60):
+                                if current_datetime.timestamp() >= (coverage_end_at.timestamp()):
                                     coverage.state = 4
                                     coverage.save()
 
@@ -1136,7 +1136,7 @@ class GetActiveCoverageView(APIView):
                         coverage_state = coverage.state
 
                         if coverage_state == None or coverage_state == 1 or coverage_state == 2:
-                            time_left = (coverage_end_at.timestamp() + 24 * 60 * 60 - 1) - current_datetime.timestamp()
+                            time_left = coverage_end_at.timestamp() - current_datetime.timestamp()
                         else:
                             time_left = 0;
 
@@ -1396,7 +1396,7 @@ class AddClaimView(APIView):
                         # For saving content to history table (not date_time_happenend)
                         if request.data.get("time_happened") != None:
                             time_happenend = int(request.data.get("time_happened"))
-                            datetime_happened = make_aware(datetime.datetime.fromtimestamp(time_happenend))
+                            datetime_happened = datetime.datetime.utcfromtimestamp(time_happenend)
                         else:
                             datetime_happened = None
 
