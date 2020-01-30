@@ -16,7 +16,7 @@ class AllUserAdmin(admin.ModelAdmin):
 
 @admin.register(CarType)
 class AllCarTypeAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "price_per_year", "currency")
+    list_display = ("id", "name", "price_per_year_usd", "price_per_year_eur")
 
 @admin.register(Company)
 class AllCompanyAdmin(admin.ModelAdmin):

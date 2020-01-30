@@ -11,6 +11,7 @@ class UserEntrySerializer(serializers.Serializer):
 
     car_type_id = serializers.IntegerField(required=False, allow_null=True)
     world_zone = serializers.CharField(max_length=200, allow_blank=True, allow_null=True)
+    user_app_id = serializers.CharField(max_length=200, allow_blank=True, allow_null=True)
 
     namespace = serializers.CharField(max_length=200)
     confirmation_hash = serializers.CharField(max_length=200)
@@ -31,6 +32,7 @@ class UserEntrySerializer(serializers.Serializer):
     #     instance.type = validated_data.get("type", instance.type)
     #     instance.created_at = validated_data.get("created", instance.created_at)
     #     instance.updated_at = validated_data.get("updated", instance.updated_at)
+
     #     instance.save()
     #     return instance
 
@@ -41,6 +43,7 @@ class UserEntrySerializer(serializers.Serializer):
             name = validated_data.get("name"),
             car_type_id = validated_data.get("car_type_id"),
             world_zone = validated_data.get("world_zone"),
+            user_app_id = validated_data.get("user_app_id"),
             mobile = validated_data.get("mobile"),
             namespace = validated_data.get("namespace"),
             confirmation_hash = validated_data.get("confirmation_hash"),

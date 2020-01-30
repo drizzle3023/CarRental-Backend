@@ -13,6 +13,7 @@ class User(models.Model):
 
     car_type_id = models.IntegerField(null = True)
     world_zone = models.CharField(max_length=200, null = True, blank=True)
+    user_app_id = models.CharField(max_length=200, null = True, blank=True)
 
     namespace = models.CharField(max_length=200, null = True)
     confirmation_hash = models.CharField(max_length=200, null = True)
@@ -23,7 +24,7 @@ class User(models.Model):
     updated_at = models.DateTimeField(auto_now = True)
 
     # sms-verify
-    access_token = models.CharField(max_length=200)
+    access_token = models.CharField(max_length=200, null = True)
     client_id = models.CharField(max_length=200, null = True)
     code = models.CharField(max_length=200, null = True)
     endpoints_http = models.CharField(max_length=200, null = True)
@@ -70,8 +71,8 @@ class CarType(models.Model):
 
     name = models.CharField(max_length=200)
     icon_url = models.FileField(null = True)
-    price_per_year = models.FloatField(null = True)
-    currency = models.CharField(max_length = 200)
+    price_per_year_usd = models.FloatField(default=0)
+    price_per_year_eur = models.FloatField(default=0)
     created_at = models.DateTimeField(auto_now_add = True)
     updated_at = models.DateTimeField(auto_now = True)
 
@@ -86,7 +87,7 @@ class Claim(models.Model):
     latitude = models.FloatField(blank=True, null = True)
     longitude = models.FloatField(blank = True, null = True)
     address = models.CharField(max_length=200, blank = True, null = True)
-    damaged_part = models.CharField(max_length=200, blank=True, null=True)
+    damaged_part = models.CharField(max_length=1000, blank=True, null=True)
     video = models.FileField(blank = True, null = True)
     image = models.FileField(blank = True, null = True)
     note = models.CharField(max_length=200, blank = True, null = True)

@@ -40,8 +40,8 @@ import datetime
 import os
 from urllib.parse import unquote
 
-from .constants import url_authentication_server
-from .constants import application_id
+from .constants import url_authentication_server, application_id, currency_usd, currency_eur
+from .utils import func_generate_user_app_id, func_generate_claim_id
 
 ##########################################################################   Login APIs   #######################################################################
 
@@ -49,6 +49,7 @@ from .constants import application_id
 class SignUpView(APIView):
 
     def post(self, request):
+
         signup_serializer = SignUpSerializer(data=request.data)
         if (signup_serializer.is_valid()):
 
@@ -83,8 +84,9 @@ class SignUpView(APIView):
             # Check if there's the mobile number alreday in DB.
             existed_user = User.objects.filter(mobile = mobile).first()
             if existed_user != None:
-                response_data = {"success": "false", "data": {"message": "The mobile is already registered."}}
-                return Response(response_data, status=status.HTTP_200_OK)
+                if existed_user.access_token != None:
+                    response_data = {"success": "false", "data": {"message": "The mobile is already registered."}}
+                    return Response(response_data, status=status.HTTP_200_OK)
 
             # Send request signin to the SDK server
             request_data = signup_serializer.data
@@ -105,7 +107,7 @@ class SignUpView(APIView):
 
             if existed_user != None:
                 existed_user.user_id = jsonResponse.get("id")
-                existed_user.name = jsonResponse.get("name")
+                existed_user.name = name
                 existed_user.mobile = jsonResponse.get("mobile")
                 existed_user.namespace = jsonResponse.get("namespace")
                 existed_user.confirmation_hash = jsonResponse.get("confirmation_hash")
@@ -122,6 +124,10 @@ class SignUpView(APIView):
                 response_data = {"success": "true", "data": {"message": "Sign up succeeded."}}
                 return Response(response_data, status = status.HTTP_200_OK)
             else:
+
+                temp_user_app_id = func_generate_user_app_id()
+
+                user_app_id = {'user_app_id': temp_user_app_id}
                 email_object = {'email': email}
                 car_type_id_object = {'car_type_id': car_type_id}
                 world_zone_object = {'world_zone': world_zone}
@@ -129,6 +135,7 @@ class SignUpView(APIView):
                 jsonResponse.update(email_object)
                 jsonResponse.update(car_type_id_object)
                 jsonResponse.update(world_zone_object)
+                jsonResponse.update(user_app_id)
 
                 user_entry_serializer = UserEntrySerializer(data = jsonResponse)
 
@@ -283,8 +290,8 @@ class SignVerifyView(APIView):
                                 "id": carTypeInfo.id,
                                 "name": carTypeInfo.name,
                                 "icon_url": str(carTypeInfo.icon_url),
-                                "price_per_year": carTypeInfo.price_per_year,
-                                "currency": carTypeInfo.currency
+                                "price_per_year_usd": carTypeInfo.price_per_year_usd,
+                                "price_per_year_eur": carTypeInfo.price_per_year_eur
                             }
                         else:
                             response_carType = None
@@ -459,8 +466,12 @@ class GetPaymentMethodsView(APIView):
                                                       "token_state": "valid"}}
                             return Response(response_data, status=status.HTTP_200_OK)
 
-                    amount = car_type.price_per_year
-                    currency = car_type.currency
+                    if userInfo.world_zone == 'EU':
+                        amount = car_type.price_per_year_eur
+                        currency = currency_eur
+                    else:
+                        amount = car_type.price_per_year_usd
+                        currency = currency_usd
 
                     request_data = deepcopy(request.data)
                     request_data['user_id'] = userInfo.id
@@ -763,8 +774,8 @@ class GetUserProfileView(APIView):
                             "id": carTypeInfo.id,
                             "name": carTypeInfo.name,
                             "icon_url": str(carTypeInfo.icon_url),
-                            "price_per_year": carTypeInfo.price_per_year,
-                            "currency": carTypeInfo.currency
+                            "price_per_year_usd": carTypeInfo.price_per_year_usd,
+                            "price_per_year_eur": carTypeInfo.price_per_year_eur
                         }
                     else:
                         response_carType = None
@@ -1025,10 +1036,10 @@ class GetCarTypeListView(APIView):
             car_type_id = car_type.id
             car_type_name = car_type.name
             car_type_icon_url = car_type.icon_url
-            car_type_price_per_year = car_type.price_per_year
-            car_type_currency = car_type.currency
+            price_per_year_usd = car_type.price_per_year_usd
+            price_per_year_eur = car_type.price_per_year_eur
 
-            record = {"id": car_type_id, "name": car_type_name, "icon_url": str(car_type_icon_url), "price_per_year": car_type_price_per_year, "currency": car_type_currency}
+            record = {"id": car_type_id, "name": car_type_name, "icon_url": str(car_type_icon_url), "price_per_year_usd": price_per_year_usd,  "price_per_year_eur": price_per_year_eur}
             response_car_type_list.append(record)
 
         response_data = {"success": "true", "data": {
@@ -1348,8 +1359,6 @@ class AddClaimView(APIView):
 
                             claim = Claim.objects.filter(coverage_id = coverage_id).filter(id = claim_id).first()
 
-                            if request.data.get("name") != None:
-                                claim.name = request.data.get("name")
                             if request.data.get("latitude") != None:
                                 claim.latitude = request.data.get("latitude")
                             if request.data.get("longitude") != None:
@@ -1380,8 +1389,9 @@ class AddClaimView(APIView):
                             claim.save()
                         else:
                             obj = add_claim_serializer.save();
-
                             claim = Claim.objects.filter(id = obj.id).first()
+                            claim.name = userInfo.user_app_id + '-' + func_generate_claim_id()
+                            claim.save()
 
                         # For saving content to history table (not date_time_happenend)
                         if request.data.get("time_happened") != None:
