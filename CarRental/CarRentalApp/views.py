@@ -302,7 +302,8 @@ class SignVerifyView(APIView):
                             "name": existed_user.name,
                             "mobile": existed_user.mobile,
                             "car_type": response_carType,
-                            "world_zone": existed_user.world_zone
+                            "world_zone": existed_user.world_zone,
+                            "pay_state": existed_user.pay_state
                         }
 
                         response_data = {"success": "true", "data": {
@@ -790,7 +791,8 @@ class GetUserProfileView(APIView):
                                                 "name": userInfo.name,
                                                 "mobile": userInfo.mobile,
                                                 "car_type": response_carType,
-                                                "world_zone": userInfo.world_zone
+                                                "world_zone": userInfo.world_zone,
+                                                "pay_state": userInfo.pay_state
                                             },
                                             "token_state": "valid",
                                             "refresh_user": resultCheckingResult.get("refresh_user")}}
@@ -804,7 +806,8 @@ class GetUserProfileView(APIView):
                                                 "name": userInfo.name,
                                                 "mobile": userInfo.mobile,
                                                 "car_type": response_carType,
-                                                "world_zone": userInfo.world_zone
+                                                "world_zone": userInfo.world_zone,
+                                                "pay_state": userInfo.pay_state
                                             },
                                             "token_state": "valid"}}
                     return Response(response_data, status=status.HTTP_200_OK)
