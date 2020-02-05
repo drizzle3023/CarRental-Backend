@@ -40,7 +40,7 @@ import datetime
 import os
 from urllib.parse import unquote
 
-from .constants import url_authentication_server, application_id, currency_usd, currency_eur
+from .constants import url_authentication_server, application_id, adyen_api_key, currency_usd, currency_eur
 from .utils import func_generate_user_app_id, func_generate_claim_id
 
 ##########################################################################   Login APIs   #######################################################################
@@ -439,6 +439,7 @@ class GetPaymentMethodsView(APIView):
 
         access_token = request.data.get("access_token")
         car_type_id = request.data.get("car_type_id")
+        world_zone = request.data.get("world_zone")
 
         # Access token validation
         resultCheckingResult = checkAccessToken(access_token)
@@ -467,7 +468,11 @@ class GetPaymentMethodsView(APIView):
                                                       "token_state": "valid"}}
                             return Response(response_data, status=status.HTTP_200_OK)
 
-                    if userInfo.world_zone == 'EU':
+                    userInfo.car_type_id = car_type_id
+                    userInfo.world_zone = world_zone
+                    userInfo.save()
+
+                    if world_zone == 'EU':
                         amount = car_type.price_per_year_eur
                         currency = currency_eur
                     else:
@@ -482,7 +487,7 @@ class GetPaymentMethodsView(APIView):
 
                     adyen = Adyen.Adyen(
                         app_name = "CarRental",
-                        xapikey = "AQEqhmfuXNWTK0Qc+iSYk2Yxs8WYS4RYA4cYCzCc8PvE9PEKkua51zO8HkygEMFdWw2+5HzctViMSCJMYAc=-VnikbEENHj+JVke2cIJHsXNIaUsYWftXVA7MqLsE280=-w69eUf3zT5jJ9zZm",
+                        xapikey = adyen_api_key,
                         platform = "test"
                     )
 
@@ -566,7 +571,7 @@ class PaymentView(APIView):
 
                         adyen = Adyen.Adyen(
                             app_name="CarRental",
-                            xapikey="AQEqhmfuXNWTK0Qc+iSYk2Yxs8WYS4RYA4cYCzCc8PvE9PEKkua51zO8HkygEMFdWw2+5HzctViMSCJMYAc=-VnikbEENHj+JVke2cIJHsXNIaUsYWftXVA7MqLsE280=-w69eUf3zT5jJ9zZm",
+                            xapikey=adyen_api_key,
                             platform="test"
                         )
 
@@ -964,34 +969,35 @@ class AddCoverageView(APIView):
 
                             active_coverage.save()
 
-                        history_content = {}
+                        if (int(request.data.get("state")) != 1):
+                            history_content = {}
 
-                        history_content['id'] = active_coverage.id
-                        history_content['name'] = active_coverage.name
-                        history_content['user_id'] = active_coverage.user_id
-                        history_content['latitude'] = active_coverage.latitude
-                        history_content['longitude'] = active_coverage.longitude
-                        history_content['address'] = active_coverage.address
-                        history_content['company_id'] = active_coverage.company_id
-                        if start_at != None:
-                            history_content['start_at'] = int(start_at)
-                        else:
-                            history_content['start_at'] = None
-                        if end_at != None:
-                            history_content['end_at'] = int(end_at)
-                        else:
-                            history_content['end_at'] = None
-                        history_content['video_mile'] = str(active_coverage.video_mile)
-                        history_content['video_vehicle'] = str(active_coverage.video_vehicle)
-                        history_content['image_mile'] = str(active_coverage.image_mile)
-                        history_content['image_vehicle'] = str(active_coverage.image_vehicle)
-                        history_content['state'] = active_coverage.state
-                        history_content['claim_count'] = 0;
+                            history_content['id'] = active_coverage.id
+                            history_content['name'] = active_coverage.name
+                            history_content['user_id'] = active_coverage.user_id
+                            history_content['latitude'] = active_coverage.latitude
+                            history_content['longitude'] = active_coverage.longitude
+                            history_content['address'] = active_coverage.address
+                            history_content['company_id'] = active_coverage.company_id
+                            if start_at != None:
+                                history_content['start_at'] = int(start_at)
+                            else:
+                                history_content['start_at'] = None
+                            if end_at != None:
+                                history_content['end_at'] = int(end_at)
+                            else:
+                                history_content['end_at'] = None
+                            history_content['video_mile'] = str(active_coverage.video_mile)
+                            history_content['video_vehicle'] = str(active_coverage.video_vehicle)
+                            history_content['image_mile'] = str(active_coverage.image_mile)
+                            history_content['image_vehicle'] = str(active_coverage.image_vehicle)
+                            history_content['state'] = active_coverage.state
+                            history_content['claim_count'] = 0;
 
-                        json_content = json.dumps(history_content)
+                            json_content = json.dumps(history_content)
 
-                        history_data = History(user_id = userInfo.id, type = "Coverage", content = str(json_content))
-                        history_data.save()
+                            history_data = History(user_id = userInfo.id, type = "Coverage", content = str(json_content))
+                            history_data.save()
 
                         if resultCheckingResult.get("refresh_user") != None:
 
@@ -1799,7 +1805,7 @@ class GetNearCompanyListView(APIView):
                         try:
                             # Also convert to int since update_time will be string.  When comparing
                             # strings, "10" is smaller than "2".
-                            return int(json['distance'])
+                            return float(json['distance'])
                         except KeyError:
                             return 0
 
