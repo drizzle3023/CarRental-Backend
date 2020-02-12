@@ -1082,6 +1082,20 @@ class GetActiveCoverageView(APIView):
 
                     if coverage != None:
 
+                        if coverage.state == 5:
+                            if resultCheckingResult.get("refresh_user") != None:
+                                response_data = {"success": "false", "data": {
+                                    "message": "The active coverage doesn't exist.",
+                                    "pay_state": pay_state,
+                                    "token_state": "valid",
+                                    "refresh_user": resultCheckingResult.get("refresh_user")}}
+                            else:
+                                response_data = {"success": "false", "data": {
+                                    "message": "The active coverage doesn't exist.",
+                                    "pay_state": pay_state,
+                                    "token_state": "valid"}}
+                            return Response(response_data, status=status.HTTP_200_OK)
+
                         coverage_id = coverage.id
                         coverage_name = coverage.name
                         coverage_latitude = coverage.latitude
@@ -1253,6 +1267,10 @@ class CancelCoverage(APIView):
                     coverage = Coverage.objects.filter(id = coverage_id).first()
 
                     if coverage != None:
+
+                        currentDateTime = datetime.datetime.now()
+                        timestamp_current_datetime = currentDateTime.timestamp()
+
                         coverage.state = 3
                         coverage.save()
 
@@ -1285,6 +1303,7 @@ class CancelCoverage(APIView):
                         history_content['image_vehicle'] = str(coverage.image_vehicle)
                         history_content['state'] = coverage.state
                         history_content['claim_count'] = claim_count;
+                        history_content['cancel_date'] = timestamp_current_datetime
 
                         history_json_content = json.dumps(history_content)
 
@@ -1319,6 +1338,62 @@ class CancelCoverage(APIView):
         else:
             response_data = {"success": "false", "data": {"message": "There'a problem with checking token.", "token_state": "invalid"}}
             return Response(response_data, status=status.HTTP_200_OK)
+
+# Confirm expired coverage
+class ConfirmExpiredCoverage(APIView):
+
+    def post(self, request):
+
+        # Get user_id from access_token
+        access_token = request.data.get("access_token")
+        coverage_id = request.data.get("coverage_id")
+
+        # Access token validation
+        resultCheckingResult = checkAccessToken(access_token)
+
+        if resultCheckingResult != None:
+
+            if resultCheckingResult.get("state") == 'valid':
+
+                userInfo = User.objects.filter(id = resultCheckingResult.get("user_id")).first()
+
+                if userInfo != None:
+
+                    coverage = Coverage.objects.filter(id = coverage_id).first()
+
+                    if coverage != None:
+                        coverage.state = 5
+                        coverage.save()
+
+                        if resultCheckingResult.get("refresh_user") != None:
+                            response_data = {"success": "true", "data": {
+                                "message": "The expired coverage was confirmed successfully.",
+                                "refresh_user": resultCheckingResult.get("refresh_user"),
+                                "token_state": "valid"}}
+                        else:
+                            response_data = {"success": "true", "data": {
+                                "message": "The expired coverage was confirmed successfully.",
+                                "token_state": "valid"}}
+                        return Response(response_data, status=status.HTTP_200_OK)
+                    else:
+                        if resultCheckingResult.get("refresh_user") != None:
+                            response_data = {"success": "false", "data": {"message": "The coverage information doesn't exist.", "token_state": "valid", "refresh_user": resultCheckingResult.get("refresh_user")}}
+                            return Response(response_data, status=status.HTTP_200_OK)
+                        else:
+                            response_data = {"success": "false", "data": {"message": "The coverage information doesn't exist.", "token_state": "valid"}}
+                            return Response(response_data, status=status.HTTP_200_OK)
+                else:
+                    response_data = {"success": "false", "data": {"message": "The access token is invalid.", "token_state": "invalid"}}
+                    return Response(response_data, status=status.HTTP_200_OK)
+
+            else:
+                response_data = {"success": "false", "data": {"message": "The access token is invalid.",
+                                 "token_state": "invalid"}}
+                return Response(response_data, status=status.HTTP_200_OK)
+        else:
+            response_data = {"success": "false", "data": {"message": "There'a problem with checking token.", "token_state": "invalid"}}
+            return Response(response_data, status=status.HTTP_200_OK)
+
 
 # Add claim
 class AddClaimView(APIView):

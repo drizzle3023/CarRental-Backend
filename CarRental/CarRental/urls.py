@@ -34,6 +34,7 @@ urlpatterns = [
     path('api/get-car-type-list', car_rental_app.GetCarTypeListView.as_view()),
     path('api/get-active-coverage', car_rental_app.GetActiveCoverageView.as_view()),
     path('api/cancel-coverage', car_rental_app.CancelCoverage.as_view()),
+    path('api/confirm-expired-coverage', car_rental_app.ConfirmExpiredCoverage.as_view()),
     path('api/add-claim', car_rental_app.AddClaimView.as_view()),
     path('api/remove-claim', car_rental_app.RemoveClaimView.as_view()),
     path('api/get-claim-list', car_rental_app.GetClaimListView.as_view()),
