@@ -15,6 +15,7 @@ from .models import Payment
 from .models import History
 from .models import CarType
 from .models import Claim
+from .models import Support
 from .models import FileUploadTest
 
 # For parsing request from android app
@@ -786,6 +787,14 @@ class GetUserProfileView(APIView):
                     else:
                         response_carType = None
 
+                    supportInfo = Support.objects.first()
+
+                    if supportInfo == None:
+                        responseSupportInfo = None;
+                    else:
+                        responseSupportInfo = {"phone_number": supportInfo.phone_number}
+
+
                     if resultCheckingResult.get("refresh_user") != None:
                         response_data = {"success": "true",
                                          "data": {
@@ -799,6 +808,7 @@ class GetUserProfileView(APIView):
                                                 "world_zone": userInfo.world_zone,
                                                 "pay_state": userInfo.pay_state
                                             },
+                                            "support_info": responseSupportInfo,
                                             "token_state": "valid",
                                             "refresh_user": resultCheckingResult.get("refresh_user")}}
                     else:
@@ -814,6 +824,7 @@ class GetUserProfileView(APIView):
                                                 "world_zone": userInfo.world_zone,
                                                 "pay_state": userInfo.pay_state
                                             },
+                                            "support_info": responseSupportInfo,
                                             "token_state": "valid"}}
                     return Response(response_data, status=status.HTTP_200_OK)
 
@@ -1919,3 +1930,21 @@ class FileUploadTestView(APIView):
             return Response(file_serializer.data, status=status.HTTP_201_CREATED)
         else:
             return Response(file_serializer.errors, status=status.HTTP_200_OK)
+
+class GetSupportInfoVIew(APIView):
+
+    def post(self, request):
+
+        support_info = Support.objects.first()
+
+        if support_info == None:
+            response_data = {"success": "false", "data": {"message": "The support information does not exist."}}
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        responseSupportInfo = {"phone_number": support_info.phone_number}
+
+        response_data = {"success": "true", "data": {
+            "message": "Getting support info succeeded.",
+            "support_info": responseSupportInfo}}
+
+        return Response(response_data, status=status.HTTP_200_OK)

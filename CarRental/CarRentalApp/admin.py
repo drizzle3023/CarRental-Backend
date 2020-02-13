@@ -7,6 +7,7 @@ from .models import Coverage
 from .models import Claim
 from .models import Payment
 from .models import History
+from .models import Support
 
 # Register your models here.
 
@@ -37,3 +38,7 @@ class AllPaymentAdmin(admin.ModelAdmin):
 @admin.register(History)
 class AllHistoryAdmin(admin.ModelAdmin):
     list_display = ("id", "type", "content")
+
+@admin.register(Support)
+class AllSupportAdmin(admin.ModelAdmin):
+    list_display = ("id", "phone_number")

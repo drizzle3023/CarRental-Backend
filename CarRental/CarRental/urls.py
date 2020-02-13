@@ -41,6 +41,7 @@ urlpatterns = [
     path('api/get-history-list', car_rental_app.GetHistoryListView.as_view()),
     path('api/get-near-company-list', car_rental_app.GetNearCompanyListView.as_view()),
     path('api/upload', car_rental_app.FileUploadTestView.as_view()),
+    path('api/get-support-info', car_rental_app.GetSupportInfoVIew.as_view()),
 
 ]
 

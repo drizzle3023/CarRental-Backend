@@ -119,3 +119,6 @@ class FileUploadTest(models.Model):
     video_file = models.FileField(blank=False, null = False)
     remark = models.CharField(max_length=20)
     timestamp = models.DateTimeField(auto_now_add=True)
+
+class Support(models.Model):
+    phone_number = models.CharField(max_length=100)
