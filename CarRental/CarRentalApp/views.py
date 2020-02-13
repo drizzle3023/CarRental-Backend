@@ -762,6 +762,13 @@ class GetUserProfileView(APIView):
 
     def post(self, request):
 
+        supportInfo = Support.objects.first()
+
+        if supportInfo == None:
+            responseSupportInfo = None;
+        else:
+            responseSupportInfo = {"phone_number": supportInfo.phone_number}
+
         access_token = request.data.get("access_token")
 
         resultCheckingResult = checkAccessToken(access_token)
@@ -786,14 +793,6 @@ class GetUserProfileView(APIView):
                         }
                     else:
                         response_carType = None
-
-                    supportInfo = Support.objects.first()
-
-                    if supportInfo == None:
-                        responseSupportInfo = None;
-                    else:
-                        responseSupportInfo = {"phone_number": supportInfo.phone_number}
-
 
                     if resultCheckingResult.get("refresh_user") != None:
                         response_data = {"success": "true",
@@ -829,15 +828,16 @@ class GetUserProfileView(APIView):
                     return Response(response_data, status=status.HTTP_200_OK)
 
                 else:
-                    response_data = {"success": "false", "data": {"message": "The access token is invalid.", "token_state": "invalid"}}
+                    response_data = {"success": "false", "data": {"message": "The access token is invalid.", "support_info": responseSupportInfo, "token_state": "invalid"}}
                     return Response(response_data, status=status.HTTP_200_OK)
 
             else:
                 response_data = {"success": "false", "data": {"message": "The access token is invalid.",
-                                 "token_state": "invalid"}}
+                                                              "support_info": responseSupportInfo,
+                                                              "token_state": "invalid"}}
                 return Response(response_data, status=status.HTTP_200_OK)
         else:
-            response_data = {"success": "false", "data": {"message": "There'a problem with checking token.", "token_state": "invalid"}}
+            response_data = {"success": "false", "data": {"message": "There'a problem with checking token.", "support_info": responseSupportInfo, "token_state": "invalid"}}
             return Response(response_data, status=status.HTTP_200_OK)
 
 # Add coverage
