@@ -1,5 +1,5 @@
 Django==3.0.1
-djangorestframework==3.11.0
+djangorestframework==3.11.2
 mysqlclient==1.4.6
 pymysql==0.9.3
 adyen==2.2.0
